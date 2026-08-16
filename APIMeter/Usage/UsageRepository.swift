@@ -221,6 +221,20 @@ public struct UsageRepository: Sendable {
         }
     }
 
+    /// Exact-match existence check so re-imports do not duplicate rules.
+    public func hasPriceRule(_ rule: PriceRule) throws -> Bool {
+        let existing = try fetchPriceRules(provider: rule.provider)
+        return existing.contains { candidate in
+            candidate.model == rule.model
+                && candidate.effectiveFrom == rule.effectiveFrom
+                && candidate.effectiveTo == rule.effectiveTo
+                && candidate.cacheHitPrice == rule.cacheHitPrice
+                && candidate.cacheMissPrice == rule.cacheMissPrice
+                && candidate.outputPrice == rule.outputPrice
+                && candidate.currency == rule.currency
+        }
+    }
+
     public func fetchPriceRules(provider: String? = nil) throws -> [PriceRule] {
         try database.dbQueue.read { db in
             var request = PriceRuleRow.all()

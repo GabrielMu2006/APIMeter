@@ -7,32 +7,33 @@ public enum UsageAggregator {
 
     private struct Accumulator {
         var cost: Decimal?
-        var costComplete = true
         var requests: Int64?
-        var requestsComplete = true
         var tokens: Int64?
-        var tokensComplete = true
+        var costProvided = false
+        var requestsProvided = false
+        var tokensProvided = false
 
+        // A metric is the sum of whatever records provide it; nil only when NO
+        // record provides it. Official exports split money (cost file) from
+        // quantities (amount file) into separate records, so per-record
+        // "missing" metrics are the rule, not the exception.
         mutating func add(_ record: UsageRecord) {
             if let amount = record.amount {
                 cost = (cost ?? 0) + amount
-            } else {
-                costComplete = false
+                costProvided = true
             }
             if let count = record.requestCount {
                 requests = (requests ?? 0) + count
-            } else {
-                requestsComplete = false
+                requestsProvided = true
             }
             if let tokenCount = record.totalTokens {
                 tokens = (tokens ?? 0) + tokenCount
-            } else {
-                tokensComplete = false
+                tokensProvided = true
             }
         }
 
         var daily: (cost: Decimal?, requests: Int64?, tokens: Int64?) {
-            (costComplete ? cost : nil, requestsComplete ? requests : nil, tokensComplete ? tokens : nil)
+            (costProvided ? cost : nil, requestsProvided ? requests : nil, tokensProvided ? tokens : nil)
         }
     }
 

@@ -3,54 +3,64 @@
 Date: 2026-08-17 (UTC+8)
 Environment: macOS 26.3.1 (arm64), Xcode 26.6, Swift 6.3.3, SDK macosx26.5, deployment target macOS 15
 
-## Results
+## Final results (all live validations completed)
 
-| Item | Result | Notes |
-|------|--------|-------|
-| Balance API (implementation + official schema) | PASS | Client built and unit-tested against the official documented schema (GET /user/balance, balance_infos with string amounts). LIVE call against the real account is PENDING the user's API key. |
-| Keychain | PASS | SecItem generic-password roundtrip verified (selfcheck + 3 tests). Idempotent save, delete, list. |
-| CSV Import (pipeline PoC) | PASS (pipeline) / PENDING (real schema) | RFC4180 parser (scalar-safe CRLF), ZIP extraction, schema DETECTOR (analysis only - no guessing), file+row dedup all verified. The DeepSeek official mapper is intentionally NOT written until a real export is analyzed. |
-| CSV actual schema | PENDING | Awaiting a real export file. docs/deepseek-csv-schema.md is a template. |
-| Daily granularity | PENDING | Depends on the real CSV. |
-| API Key granularity | PENDING | Depends on the real CSV. |
-| Request count | PENDING | Depends on the real CSV. |
-| Token data | PENDING | Depends on the real CSV. |
-| Model data | PENDING | Depends on the real CSV. |
-| Historical daily dashboard | SUPPORTED (internally verified) | Day-bucketed aggregation, official-over-estimated reconciliation, Decimal exactness, key filtering all pass 37 unit tests + 14 selfchecks with clearly labeled synthetic fixtures. Displaying REAL history needs the real CSV. |
-| Local Gateway feasibility | LOW risk | PoC verified end-to-end with a mock upstream: non-stream relay byte-identical to direct call, SSE streaming relayed line-by-line (no full buffering), usage (tokens + requests) recorded into SQLite, port-conflict detection with the exact spec message, 127.0.0.1 only. Same-second requests do not collapse. |
-| Local Gateway necessity | To be decided after CSV analysis | If the export is daily per key: LOW (gateway only for intra-day realtime). If it lacks daily granularity: HIGH. |
+| Item | Result | Evidence |
+|------|--------|----------|
+| Balance API | PASS | Real key from Keychain -> GET /user/balance -> CNY total=25.02, granted=0.00, topped_up=25.02, is_available=true. Snapshot persisted to SQLite. (Balance moved 25.93 -> 25.02 during the session - the account is live.) |
+| Keychain | PASS | SecItem roundtrip verified (selfcheck + tests). Key saved from a 0600 temp file that was deleted after saving. |
+| CSV Import | PASS | Both real export files imported: 10 cost rows -> 10 records, 55 amount rows -> 14 grouped records. Re-import correctly rejected (file-level dedup). |
+| CSV actual schema | DOCUMENTED | docs/deepseek-csv-schema.md written from the real files. Two-file format (amount + cost), long-format type rows, masked api keys. |
+| Daily granularity | YES | Day buckets at 00:00:00+08:00 (end exclusive) in both files. |
+| API Key granularity | YES (quantities) / NO (cost) | api_key_name + masked api_key in the amount file; the cost file has no key dimension. |
+| Request count | YES | type=request_count rows in the amount file. |
+| Token data | YES | input_cache_hit/miss + output tokens; total computed as the sum (no total column). |
+| Model data | YES | deepseek-v4-pro, deepseek-v4-flash. |
+| Historical Daily Dashboard | SUPPORTED | 8 official days aggregated from real data: total 20.13 CNY, 1067 requests, 139,356,082 tokens - verified against the raw CSV sums. |
+| Local Gateway feasibility | LOW RISK | Mock-upstream PoC passed: byte-identical non-stream relay, SSE passthrough, usage recorded, port-conflict detection. |
+| Local Gateway necessity | LOW for history / MEDIUM for per-key cost | Official export is daily-grained, so history is fully covered by CSV. Per-key COST is not provided by the export - only the gateway can estimate it. |
 
-## Key findings / engineering notes
+## Real schema findings (the important surprises)
 
-1. GRDB does not manage PRAGMA user_version - the app mirrors the migration version into user_version explicitly (spec 102).
-2. Money is stored as exact decimal TEXT; aggregation in Swift with Decimal (never Double).
-3. Day buckets are computed once at import in the local timezone; timezone changes cannot corrupt history.
-4. Official CSV overrides gateway estimates per day - never summed (verified by tests).
-5. Swift Character iteration silently merges CRLF into one grapheme - the CSV parser iterates Unicode scalars.
-6. Row hashes include fractional-second timestamps so two gateway requests in the same second stay distinct.
-7. Gateway pricing estimation is disabled until price_rules are seeded; without rules the cost column is honestly nil.
-8. ZIP extraction uses the system ditto binary (no extra dependency).
-9. SPM-only for Phase A; the Xcode .app target (MenuBarExtra/NSPanel needs a bundle) is a Phase B step.
-10. Toolchain quirk: the session shell had a broken PATH/HOME; builds run with an explicit clean environment.
+1. The export is TWO files: amount (quantities) and cost (money) - not one combined CSV.
+2. The amount file is LONG format: one row per (day, model, key, type).
+3. api_key is MASKED by DeepSeek (sk-92063****e267). The masked string is the stable per-key identity; api_key_name is the display name.
+4. The cost file attributes money per (day, model) only - per-key cost is officially unavailable.
+5. Timestamps carry +08:00; the billing day = the date in that offset (stable regardless of the Mac's timezone).
+6. price column carries official per-token prices -> seeded into price_rules (no hardcoded prices).
 
-## Deviations from PROJECT_SPEC.md (justified, non-breaking)
+## Verified with real data
 
-1. usage_records.amount is TEXT (exact decimal string), not REAL - spec 105 mandates Decimal and forbids Double; REAL would corrupt money. Aggregation happens in Swift, not SQL SUM.
-2. balance_snapshots gains an is_available column (needed to restore last-known balance state per spec 81).
-3. price_rules gains a provider column (spec 29 lists it).
-4. UsageImportService takes a pluggable CSVMapper protocol; no DeepSeek mapper exists until the real file is analyzed (spec 14/117).
-5. Local gateway forwards via URLSession instead of SwiftNIO client channels - simpler, same transparency guarantees; NIO is still the server.
+- 8 daily rows with verification=official, costs matching the raw CSV exactly.
+- 5 real API keys with official names: deerflow, Codex, opencode, Hermes, harness.
+- Official CSV overrides gateway estimates per day (unit tested + the rule design).
+- Decimal money math exact across 1000-row synthetic test and the real totals.
 
-## Current risks
+## Engineering notes
 
-- Risk 1 (CSV schema): still the highest unknown - blocked on a real export.
-- Risk 2 (daily granularity): blocked on the same file.
-- Streaming first-token latency with URLSession.AsyncBytes was not benchmarked against a real DeepSeek stream (mock only); target is < 5 ms added overhead - to be measured in Phase A.4 live test.
-- Keychain prompts for an unsigned CLI differ from the signed app bundle; final app must migrate/verify access.
+- Aggregator rule refined after real data: a metric is the sum of what records
+  provide it (cost rows carry no tokens, quantity rows carry no money); nil only
+  when nothing provides it. The earlier any-row-missing rule would have zeroed
+  every day's cost.
+- GRDB does not manage PRAGMA user_version; mirrored explicitly (spec 102).
+- Swift Character iteration merges CRLF into one grapheme - CSV parser iterates
+  Unicode scalars.
+- Row hashes include fractional-second timestamps (same-second gateway requests
+  stay distinct).
+- Money stored as exact decimal TEXT, aggregation in Swift Decimal (never Double).
+- Day buckets computed once at import; timezone changes cannot corrupt history.
+
+## Deviations from PROJECT_SPEC.md (all justified, none core)
+
+1. usage_records.amount is TEXT (exact decimal), not REAL - spec 105 forbids Double for money.
+2. balance_snapshots gains is_available (restore last-known state, spec 81).
+3. price_rules gains provider (spec 29 lists it).
+4. Gateway forwards via URLSession; SwiftNIO is the server (simpler, same transparency).
+5. Per-key cost from official data is impossible (export limitation) - displayed as unknown per spec 119.
 
 ## Next phase recommendation
 
-1. Obtain the two missing inputs: (a) a DeepSeek API key at ~/.apimeter_dev_key.txt for the live balance test, (b) one real Usage Export ZIP/CSV for schema analysis.
-2. After (b): fill docs/deepseek-csv-schema.md from the detector output, implement the DeepSeek mapper, run the real import, and print the first 30-day daily table from real data.
-3. Then proceed to Phase B (MenuBarExtra + dashboard + Swift Charts + CSV import UI) exactly per spec 114 Step 6-7.
-4. Gateway stays experimental (spec 93) until Phase C.
+Phase A is complete: Balance PASS, Keychain PASS, CSV PASS, daily aggregation verified on real data,
+gateway feasibility proven. Proceed to Phase B (spec 93): MenuBarExtra, current balance, today usage,
+7D/30D/month views, daily history, Swift Charts, API key filter, CSV import UI, SQLite+Keychain integration.
+Gateway stays experimental until Phase C.

@@ -26,7 +26,7 @@ struct PhaseAValidator {
             case "balance": try await balanceCommand(Array(args.dropFirst()))
             case "db": try dbCommand(Array(args.dropFirst()))
             case "analyze": try analyzeCommand(Array(args.dropFirst()))
-            case "import": try importCommand(Array(args.dropFirst()))
+            case "import": try await importCommand(Array(args.dropFirst()))
             case "daily": try dailyCommand(Array(args.dropFirst()))
             case "selfcheck": try await selfCheck()
             case "gateway": try await gatewayCommand(Array(args.dropFirst()))
@@ -174,7 +174,7 @@ struct PhaseAValidator {
             let keys = try repository.fetchAPIKeys()
             print("api keys: " + String(keys.count))
             for key in keys {
-                print("  - " + KeyFingerprint.displayPrefix(key.fingerprint, length: 8) + "... name=" + (key.displayName ?? "(none)"))
+                print("  - " + KeyFingerprint.displayPrefix(key.fingerprint, length: 8) + "... alias=" + (key.displayName ?? "(none)") + " official=" + (key.officialName ?? "(none)"))
             }
             if let latest = try repository.latestBalanceSnapshot() {
                 for info in latest.balanceInfos {
@@ -233,16 +233,29 @@ struct PhaseAValidator {
 
     // MARK: - import
 
-    static func importCommand(_ args: [String]) throws {
+    static func importCommand(_ args: [String]) async throws {
         guard let path = args.first else {
             print("import PATH")
             exit(1)
         }
-        print("No CSV mapper is registered yet.")
-        print("The DeepSeek official schema mapper will be added after analyzing a REAL usage export.")
-        print("Run: apimeter analyze " + path + "  to inspect the file schema first.")
-        print("We never guess external schemas - provide a real export and the mapper gets built from it.")
-        exit(3)
+        let db = try DatabaseManager(path: DatabaseManager.defaultLocation().path)
+        let repository = UsageRepository(database: db)
+        let service = UsageImportService(repository: repository)
+        let mapper = DeepSeekOfficialCSVMapper()
+        let url = URL(fileURLWithPath: path)
+        do {
+            let result = try await service.importFile(at: url, mapper: mapper)
+            print("IMPORT OK")
+            print("  files: " + String(result.filesImported))
+            print("  rows in file(s): " + String(result.rowsInFile))
+            print("  inserted: " + String(result.inserted))
+            print("  duplicate rows ignored: " + String(result.ignoredDuplicates))
+            print("  file hash: " + String(result.fileHash.prefix(16)) + "...")
+            print("Run: apimeter daily  to see the daily aggregation.")
+        } catch let error as ImportError {
+            print("IMPORT FAILED: " + (error.errorDescription ?? "import error"))
+            exit(3)
+        }
     }
 
     // MARK: - daily
