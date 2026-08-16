@@ -245,6 +245,18 @@ public struct UsageRepository: Sendable {
         }
     }
 
+    // MARK: - Clear
+
+    /// Deletes all usage rows but KEEPS import_batches metadata (spec 84),
+    /// so previously imported files stay deduplicated.
+    @discardableResult
+    public func clearUsageRecords() throws -> Int {
+        try database.dbQueue.write { db in
+            try db.execute(sql: "DELETE FROM usage_records")
+            return db.changesCount
+        }
+    }
+
     // MARK: - Retention
 
     /// Deletes usage older than the configured retention. Import metadata is
