@@ -1,0 +1,20 @@
+# macOS
+.DS_Store
+
+# SwiftPM
+.build/
+.swiftpm/
+
+# Xcode
+DerivedData/
+*.xcodeproj/xcuserdata/
+*.xcworkspace/xcuserdata/
+*.xcscmblueprint
+
+# Secrets — API keys must never be committed
+*.key
+.env
+apimeter_dev_key*
+
+# Local artifacts
+docs/samples/
