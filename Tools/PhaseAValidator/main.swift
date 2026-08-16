@@ -168,6 +168,7 @@ struct PhaseAValidator {
             print("usage records: " + String(try repository.recordCount()))
             let batches = try repository.fetchImportBatches()
             print("import batches: " + String(batches.count))
+            print("price rules: " + String(try repository.fetchPriceRules().count))
             for batch in batches {
                 print("  - " + (batch.filename ?? "?") + " rows=" + String(batch.rowCount) + " month=" + (batch.month ?? "?"))
             }
