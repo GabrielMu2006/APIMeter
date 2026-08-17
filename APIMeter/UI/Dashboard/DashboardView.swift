@@ -154,29 +154,33 @@ struct DashboardView: View {
     }
 
     private var todayValue: String {
-        if let cost = state.dashboardViewModel.today?.cost {
-            return CurrencyFormatter.format(cost, currency: "CNY")
-        }
+        // Today = balance-delta method (primary, per product decision).
         if let estimate = state.dashboardViewModel.todayBalanceEstimate {
             return CurrencyFormatter.format(estimate, currency: "CNY")
+        }
+        // No usable balance baseline: fall back to archived official data.
+        if let cost = state.dashboardViewModel.today?.cost {
+            return CurrencyFormatter.format(cost, currency: "CNY")
         }
         return "—"
     }
 
     private var todaySubtitle: String {
         var parts: [String] = []
-        if let today = state.dashboardViewModel.today {
-            var source = today.verification == .official ? "Official export" : "Estimate"
+        if state.dashboardViewModel.todayBalanceEstimate != nil {
+            parts.append("Balance-derived")
+        } else if let today = state.dashboardViewModel.today {
+            var source = "Official export"
             if let imported = state.dashboardViewModel.latestImportAt {
                 source += " · imported " + imported.formatted(date: .omitted, time: .shortened)
             }
             parts.append(source)
-            if let requests = today.requests { parts.append(String(requests) + " requests") }
-            if let tokens = today.tokens { parts.append(TokenFormatter.compact(tokens) + " tokens") }
-        } else if state.dashboardViewModel.todayBalanceEstimate != nil {
-            parts.append("Balance-derived estimate")
         } else {
             parts.append("no data yet")
+        }
+        if let today = state.dashboardViewModel.today {
+            if let requests = today.requests { parts.append(String(requests) + " requests") }
+            if let tokens = today.tokens { parts.append(TokenFormatter.compact(tokens) + " tokens") }
         }
         return parts.joined(separator: " · ")
     }

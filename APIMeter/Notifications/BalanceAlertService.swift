@@ -52,6 +52,18 @@ public final class BalanceAlertService {
         }
     }
 
+    /// Posts an arbitrary local notification (sync failures etc.).
+    public func postNotification(title: String, body: String) async {
+        let settings = await center.notificationSettings()
+        guard settings.authorizationStatus == .authorized || settings.authorizationStatus == .provisional else { return }
+        let content = UNMutableNotificationContent()
+        content.title = title
+        content.body = body
+        content.sound = .default
+        let request = UNNotificationRequest(identifier: "com.apimeter." + UUID().uuidString, content: content, trigger: nil)
+        try? await center.add(request)
+    }
+
     /// Checks the balance against the threshold. Returns true when it notified.
     @discardableResult
     public func check(balance: Balance?, threshold: Decimal?) async -> Bool {

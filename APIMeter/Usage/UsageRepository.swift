@@ -271,6 +271,13 @@ public struct UsageRepository: Sendable {
             guard let baselineIndex = parsed.lastIndex(where: { $0.timestamp < todayStart }) else {
                 return nil
             }
+            // Safety rule: the baseline must be recent (within 24 h before
+            // midnight). An older baseline would mix several days of spending
+            // into the estimate.
+            let baseline = parsed[baselineIndex]
+            if baseline.timestamp < todayStart.addingTimeInterval(-24 * 3600) {
+                return nil
+            }
             var previous = parsed[baselineIndex].total
             var spend = Decimal.zero
             var anyToday = false

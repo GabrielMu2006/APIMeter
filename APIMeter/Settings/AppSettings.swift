@@ -46,6 +46,9 @@ public final class AppSettings {
         static let appearance = "settings.appearance"
         static let restoreWindowState = "settings.restoreWindowState"
         static let openDashboardAtLaunch = "settings.openDashboardAtLaunch"
+        static let lastSyncDay = "settings.sync.lastSyncDay"
+        static let lastSyncResult = "settings.sync.lastResult"
+        static let syncToolPath = "settings.sync.toolPath"
     }
 
     public init(defaults: UserDefaults = .standard) {
@@ -57,6 +60,9 @@ public final class AppSettings {
         self.appearance = defaults.string(forKey: Keys.appearance).flatMap(AppearanceMode.init(rawValue:)) ?? .system
         self.restoreWindowState = defaults.object(forKey: Keys.restoreWindowState) == nil ? true : defaults.bool(forKey: Keys.restoreWindowState)
         self.openDashboardAtLaunch = defaults.bool(forKey: Keys.openDashboardAtLaunch)
+        self.lastSyncDay = defaults.string(forKey: Keys.lastSyncDay)
+        self.lastSyncResult = defaults.string(forKey: Keys.lastSyncResult)
+        self.syncToolPath = defaults.string(forKey: Keys.syncToolPath) ?? "/Users/gabrielmu/Documents/API Meter/DeepSeekSync"
     }
 
     public var retention: HistoryRetention {
@@ -86,5 +92,20 @@ public final class AppSettings {
 
     public var openDashboardAtLaunch: Bool {
         didSet { defaults.set(openDashboardAtLaunch, forKey: Keys.openDashboardAtLaunch) }
+    }
+
+    /// yyyy-MM-dd of the last successful daily export sync.
+    public var lastSyncDay: String? {
+        didSet { defaults.set(lastSyncDay, forKey: Keys.lastSyncDay) }
+    }
+
+    /// Human-readable result of the last sync attempt.
+    public var lastSyncResult: String? {
+        didSet { defaults.set(lastSyncResult, forKey: Keys.lastSyncResult) }
+    }
+
+    /// Directory containing the deepseek-sync CLI (with its bundled Node).
+    public var syncToolPath: String {
+        didSet { defaults.set(syncToolPath, forKey: Keys.syncToolPath) }
     }
 }

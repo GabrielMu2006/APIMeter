@@ -21,6 +21,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             refreshCoordinator?.start()
             state.refreshCoordinator = refreshCoordinator
 
+            // Daily export sync (00:30, catch-up on launch/wake).
+            let syncScheduler = SyncScheduler(environment: state.environment)
+            syncScheduler.start()
+            state.syncScheduler = syncScheduler
+
             let env = ProcessInfo.processInfo.environment
             if env["APIMETER_OPEN_DASHBOARD"] == "1" {
                 // Verification aid: present the dashboard (or mini) at launch.

@@ -13,6 +13,7 @@ public final class AppState {
     /// Strong: the controller owns the NSPanel for the app's lifetime.
     public var floatingPanelController: FloatingPanelController?
     public weak var refreshCoordinator: RefreshCoordinator?
+    public weak var syncScheduler: SyncScheduler?
     /// Set after creation so AppDelegate and shortcuts can reach the state.
     public nonisolated(unsafe) static var current: AppState?
 

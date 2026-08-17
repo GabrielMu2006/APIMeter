@@ -7,6 +7,8 @@ import { saveDownload } from "./downloadManager";
 import { loadSession, saveSession, deleteSession } from "./sessionStore";
 import { loadState, saveState } from "./syncState";
 
+const JSON_MODE = process.argv.includes("--json");
+
 async function main(): Promise<void> {
   const command = process.argv[2] ?? "help";
   fs.mkdirSync(BASE_DIR, { recursive: true });
@@ -37,11 +39,15 @@ async function main(): Promise<void> {
           const page = await context.newPage();
           const download = await exportUsage(context, page);
           const result = await saveDownload(download);
-          console.log("SYNC OK");
-          console.log("  file: " + result.fileName);
-          console.log("  path: " + result.path);
-          console.log("  bytes: " + result.bytes);
-          console.log("  sha256: " + result.sha256);
+          if (JSON_MODE) {
+            console.log(JSON.stringify({ ok: true, file: result.fileName, path: result.path, bytes: result.bytes, sha256: result.sha256 }));
+          } else {
+            console.log("SYNC OK");
+            console.log("  file: " + result.fileName);
+            console.log("  path: " + result.path);
+            console.log("  bytes: " + result.bytes);
+            console.log("  sha256: " + result.sha256);
+          }
           saveState({
             lastSyncAt: new Date().toISOString(),
             lastFileHash: result.sha256,
@@ -50,7 +56,9 @@ async function main(): Promise<void> {
           // Cookies may rotate - refresh the saved session for next time.
           const fresh = await context.storageState();
           saveSession(JSON.stringify(fresh));
-          console.log("  session refreshed");
+          if (!JSON_MODE) {
+            console.log("  session refreshed");
+          }
         } finally {
           await context.close();
         }
@@ -110,12 +118,16 @@ async function main(): Promise<void> {
         console.log("  logout  delete the saved session");
     }
   } catch (error) {
-    if (error instanceof SessionExpiredError) {
-      console.error(error.message);
-      process.exit(3);
+    if (JSON_MODE) {
+      console.error(JSON.stringify({
+        ok: false,
+        sessionExpired: error instanceof SessionExpiredError,
+        error: error instanceof Error ? error.message : String(error),
+      }));
+    } else {
+      console.error("SYNC FAILED: " + (error instanceof Error ? error.message : String(error)));
     }
-    console.error("SYNC FAILED: " + (error instanceof Error ? error.message : String(error)));
-    process.exit(1);
+    process.exit(error instanceof SessionExpiredError ? 3 : 1);
   }
 }
 

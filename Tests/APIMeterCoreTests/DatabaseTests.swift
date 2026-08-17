@@ -99,6 +99,19 @@ struct DatabaseTests {
         #expect(estimate == nil)
     }
 
+    @Test func estimatedTodaySpendRejectsStaleBaseline() throws {
+        let db = try DatabaseManager.ephemeral()
+        let repo = UsageRepository(database: db)
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = .autoupdatingCurrent
+        let todayStart = calendar.startOfDay(for: Date())
+        // Baseline 3 days before today - must be rejected (too stale).
+        try snapshot(repo, total: Decimal(string: "30.00")!, at: todayStart.addingTimeInterval(-72 * 3600))
+        try snapshot(repo, total: Decimal(string: "20.00")!, at: todayStart.addingTimeInterval(3600))
+        let estimate = try repo.estimatedTodaySpend(now: todayStart.addingTimeInterval(7200))
+        #expect(estimate == nil)
+    }
+
     @Test func reconcileDerivedCostsMatchesBilling() throws {
         let db = try DatabaseManager.ephemeral()
         let repo = UsageRepository(database: db)

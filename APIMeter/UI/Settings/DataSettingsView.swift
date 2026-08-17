@@ -41,6 +41,14 @@ struct DataSettingsView: View {
                 }
             }
 
+            Section("Daily Export Sync") {
+                LabeledContent("Status", value: syncStatusText)
+                LabeledContent("Next run", value: state.syncScheduler?.nextRunText ?? "unknown")
+                Text("The daily sync runs once a day at 00:30 (hidden browser) and imports the official export automatically. The Refresh button only updates the balance - it never triggers a sync.")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+            }
+
             Section("Local Data") {
                 HStack {
                     Button("Export Local Data (CSV)...") {
@@ -99,6 +107,19 @@ struct DataSettingsView: View {
             }
             Button("Cancel", role: .cancel) {}
         }
+    }
+
+    private var syncStatusText: String {
+        if let result = state.syncScheduler?.lastResult {
+            return (result.ok ? "OK - " : "FAILED - ") + result.message
+        }
+        if let last = state.environment.settings.lastSyncResult {
+            return last
+        }
+        if let day = state.environment.settings.lastSyncDay {
+            return "Last sync: " + day
+        }
+        return "Not run yet"
     }
 
     private func handleDrop(providers: [NSItemProvider]) -> Bool {
