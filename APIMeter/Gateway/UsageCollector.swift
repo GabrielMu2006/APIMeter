@@ -32,14 +32,21 @@ public struct UsageCollector: Sendable {
         // Estimated cost via versioned pricing rules, only when rules exist.
         // Without a matching rule the amount stays nil (honest unknown, spec 119).
         if let model, let usage,
-           let rules = try? repository.fetchPriceRules(provider: "deepseek"),
-           let rule = PricingEngine.selectRule(model: model, at: timestamp, rules: rules) {
-            let hit = usage.cacheHitTokens ?? 0
-            let miss = usage.cacheMissTokens ?? 0
-            let output = usage.completionTokens ?? 0
-            if let cost = PricingEngine.cost(cacheHitTokens: hit, cacheMissTokens: miss, outputTokens: output, rule: rule) {
-                record.amount = cost
-                record.currency = rule.currency
+           let rules = try? repository.fetchPriceRules(provider: "deepseek") {
+            var rule = PricingEngine.selectRule(model: model, at: timestamp, rules: rules)
+            // Estimated rows may fall back to the last known official price
+            // after the export window ends (still labeled .estimated).
+            if rule == nil {
+                rule = PricingEngine.latestRule(model: model, at: timestamp, rules: rules)
+            }
+            if let rule {
+                let hit = usage.cacheHitTokens ?? 0
+                let miss = usage.cacheMissTokens ?? 0
+                let output = usage.completionTokens ?? 0
+                if let cost = PricingEngine.cost(cacheHitTokens: hit, cacheMissTokens: miss, outputTokens: output, rule: rule) {
+                    record.amount = cost
+                    record.currency = rule.currency
+                }
             }
         }
 

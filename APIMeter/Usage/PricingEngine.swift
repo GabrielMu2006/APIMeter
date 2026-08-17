@@ -11,6 +11,17 @@ public enum PricingEngine {
             .max { $0.effectiveFrom < $1.effectiveFrom }
     }
 
+    /// Fallback for REALTIME ESTIMATES only: the most recent known rule for
+    /// the model, even if it already expired. Gateway rows are labeled
+    /// .estimated anyway, so using the last known official price as an
+    /// estimate beats silently showing no cost at all. Historical (official)
+    /// costing must keep using selectRule - never this fallback.
+    public static func latestRule(model: String, at date: Date, rules: [PriceRule]) -> PriceRule? {
+        rules
+            .filter { $0.model == model && $0.effectiveFrom <= date }
+            .max { $0.effectiveFrom < $1.effectiveFrom }
+    }
+
     /// Cost = (cacheHit/1M * cacheHitPrice) + (cacheMiss/1M * cacheMissPrice) + (output/1M * outputPrice).
     /// Returns nil when the rule has no prices (honest unknown, never guessed).
     public static func cost(cacheHitTokens: Int64, cacheMissTokens: Int64, outputTokens: Int64, rule: PriceRule) -> Decimal? {
