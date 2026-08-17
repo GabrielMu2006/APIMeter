@@ -334,6 +334,36 @@ public struct UsageRepository: Sendable {
         }
     }
 
+    /// Partial today estimate when NO pre-midnight baseline exists:
+    /// walks today's snapshots from the FIRST one, summing only decreases
+    /// (top-ups ignored). A lower bound of the real daily spend, labeled
+    /// with its start time. Returns nil with fewer than 2 snapshots.
+    public func estimatedTodaySpendSinceFirstSnapshot(now: Date = Date()) throws -> PartialTodayEstimate? {
+        try database.dbQueue.read { db in
+            let rows = try BalanceSnapshotRow
+                .filter(Column("currency") == "CNY")
+                .order(Column("timestamp"))
+                .fetchAll(db)
+            var calendar = Calendar(identifier: .gregorian)
+            calendar.timeZone = .autoupdatingCurrent
+            let todayStart = calendar.startOfDay(for: now)
+            let parsed: [(timestamp: Date, total: Decimal)] = rows.compactMap { row in
+                guard let date = ISO8601.date(row.timestamp) else { return nil }
+                return (date, DecimalStorage.decimal(row.total) ?? 0)
+            }
+            let todays = parsed.filter { $0.timestamp >= todayStart }
+            guard todays.count >= 2, let first = todays.first else { return nil }
+            var previous = first.total
+            var spend = Decimal.zero
+            for entry in todays.dropFirst() {
+                let delta = previous - entry.total
+                if delta > 0 { spend += delta }
+                previous = entry.total
+            }
+            return PartialTodayEstimate(amount: spend, since: first.timestamp)
+        }
+    }
+
     // MARK: - Derived cost reconciliation
 
     /// Cross-checks DERIVED per-key costs (price * amount from the amount file)

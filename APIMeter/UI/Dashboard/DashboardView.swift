@@ -163,21 +163,16 @@ struct DashboardView: View {
     }
 
     private var todayValue: String {
-        // Today = balance-delta method (primary, per product decision).
-        if let estimate = state.dashboardViewModel.todayBalanceEstimate {
-            return CurrencyFormatter.format(estimate, currency: "CNY")
-        }
-        // No usable balance baseline: fall back to archived official data.
-        if let cost = state.dashboardViewModel.today?.cost {
-            return CurrencyFormatter.format(cost, currency: "CNY")
-        }
-        return "—"
+        state.dashboardViewModel.todayDisplayCost.map { CurrencyFormatter.format($0, currency: "CNY") } ?? "—"
     }
 
     private var todaySubtitle: String {
         var parts: [String] = []
+        parts.append(state.dashboardViewModel.todayDisplaySubtitle)
         if state.dashboardViewModel.todayBalanceEstimate != nil {
-            parts.append("Balance-derived")
+            if let fetchedAt = state.balanceViewModel.balance?.fetchedAt {
+                parts.append("updated " + fetchedAt.formatted(date: .omitted, time: .shortened))
+            }
         } else if let today = state.dashboardViewModel.today {
             var source = "Official export"
             if let imported = state.dashboardViewModel.latestImportAt {

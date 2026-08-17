@@ -7,7 +7,6 @@ import AppKit
 @MainActor
 public final class RefreshCoordinator {
     private let state: AppState
-    private var localTimer: Timer?
     private var networkTimer: Timer?
 
     public init(state: AppState) {
@@ -19,7 +18,6 @@ public final class RefreshCoordinator {
         let center = NSWorkspace.shared.notificationCenter
         center.addObserver(forName: NSWorkspace.willSleepNotification, object: nil, queue: .main) { [weak self] _ in
             Task { @MainActor in
-                self?.localTimer?.invalidate()
                 self?.networkTimer?.invalidate()
             }
         }
@@ -33,12 +31,11 @@ public final class RefreshCoordinator {
 
     public func notePanelVisibilityChanged(visible: Bool) {
         if visible {
-            scheduleNetwork(interval: 5 * 60)
-            startLocalTimer()
+            // Visible: balance API is lightweight - refresh every minute so
+            // Today (balance-derived) tracks spending closely.
+            scheduleNetwork(interval: 60)
             Task { await state.refreshAll() }
         } else {
-            localTimer?.invalidate()
-            localTimer = nil
             scheduleNetwork(interval: 15 * 60)
         }
     }
@@ -46,16 +43,6 @@ public final class RefreshCoordinator {
     private func reschedule() {
         let visible = state.floatingPanelController?.isVisible ?? false
         notePanelVisibilityChanged(visible: visible)
-    }
-
-    /// Local (SQLite-only) reload: cheap, picks up gateway writes quickly.
-    private func startLocalTimer() {
-        localTimer?.invalidate()
-        let timer = Timer(timeInterval: 60, repeats: true) { [weak self] _ in
-            Task { @MainActor in await self?.state.dashboardViewModel.reload() }
-        }
-        RunLoop.main.add(timer, forMode: .common)
-        localTimer = timer
     }
 
     private func scheduleNetwork(interval: TimeInterval) {

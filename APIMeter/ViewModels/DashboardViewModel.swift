@@ -20,6 +20,7 @@ public final class DashboardViewModel {
     public private(set) var summary: UsageSummary?
     public private(set) var today: DailyUsage?
     public private(set) var todayBalanceEstimate: Decimal?
+    public private(set) var todayPartialEstimate: PartialTodayEstimate?
     public private(set) var perKeyCostsByDay: [LocalDay: [(fingerprint: String, cost: Decimal)]] = [:]
     public private(set) var latestImportAt: Date?
     public private(set) var apiKeys: [APIKey] = []
@@ -50,6 +51,28 @@ public final class DashboardViewModel {
         }
     }
 
+    /// The cost shown on the Today card everywhere (menu bar, dashboard, mini):
+    /// full balance-delta -> partial (since first snapshot) -> official fallback.
+    public var todayDisplayCost: Decimal? {
+        if let estimate = todayBalanceEstimate { return estimate }
+        if let partial = todayPartialEstimate { return partial.amount }
+        return today?.cost
+    }
+
+    /// Human-readable source label for the Today card.
+    public var todayDisplaySubtitle: String {
+        if todayBalanceEstimate != nil {
+            return "Balance-derived"
+        }
+        if let partial = todayPartialEstimate {
+            return "Balance-derived since " + partial.since.formatted(date: .omitted, time: .shortened) + " (no midnight baseline yet)"
+        }
+        if today != nil {
+            return "Official export"
+        }
+        return "no data yet"
+    }
+
     public func reload() async {
         isLoading = true
         defer { isLoading = false }
@@ -70,6 +93,7 @@ public final class DashboardViewModel {
         let now = LocalDay(date: Date())
         today = (try? environment.repository.summary(from: now, to: now, fingerprints: nil))?.daily.first
         todayBalanceEstimate = try? environment.repository.estimatedTodaySpend()
+        todayPartialEstimate = try? environment.repository.estimatedTodaySpendSinceFirstSnapshot()
         lastReload = Date()
     }
 

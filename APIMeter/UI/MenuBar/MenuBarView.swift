@@ -106,8 +106,8 @@ struct TodaySection: View {
         HStack {
             VStack(alignment: .leading, spacing: 2) {
                 Text("Today").font(.caption).foregroundStyle(.secondary)
-                if let today = state.dashboardViewModel.today {
-                    Text(today.cost.map { CurrencyFormatter.format($0, currency: "CNY") } ?? "—")
+                if let cost = state.dashboardViewModel.todayDisplayCost {
+                    Text(CurrencyFormatter.format(cost, currency: "CNY"))
                         .font(.system(size: 20, weight: .semibold, design: .rounded))
                         .monospacedDigit()
                 } else {

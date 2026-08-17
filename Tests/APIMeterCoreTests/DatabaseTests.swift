@@ -88,6 +88,36 @@ struct DatabaseTests {
         #expect(estimate == Decimal(string: "10.00"))
     }
 
+    @Test func partialEstimateWalksFromFirstSnapshotToday() throws {
+        let db = try DatabaseManager.ephemeral()
+        let repo = UsageRepository(database: db)
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = .autoupdatingCurrent
+        let todayStart = calendar.startOfDay(for: Date())
+        // No pre-midnight snapshot - only today's, starting at 10:00.
+        try snapshot(repo, total: Decimal(string: "80.00")!, at: todayStart.addingTimeInterval(10 * 3600))
+        try snapshot(repo, total: Decimal(string: "72.00")!, at: todayStart.addingTimeInterval(11 * 3600))
+        try snapshot(repo, total: Decimal(string: "90.00")!, at: todayStart.addingTimeInterval(12 * 3600)) // topup
+        try snapshot(repo, total: Decimal(string: "81.00")!, at: todayStart.addingTimeInterval(13 * 3600))
+        let partial = try repo.estimatedTodaySpendSinceFirstSnapshot(now: todayStart.addingTimeInterval(14 * 3600))
+        // 8 + 9 = 17 (topup ignored)
+        #expect(partial?.amount == Decimal(string: "17.00"))
+        #expect(partial?.since == todayStart.addingTimeInterval(10 * 3600))
+        // Full estimate still nil (no pre-midnight baseline).
+        #expect(try repo.estimatedTodaySpend(now: todayStart.addingTimeInterval(14 * 3600)) == nil)
+    }
+
+    @Test func partialEstimateNeedsTwoSnapshots() throws {
+        let db = try DatabaseManager.ephemeral()
+        let repo = UsageRepository(database: db)
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = .autoupdatingCurrent
+        let todayStart = calendar.startOfDay(for: Date())
+        try snapshot(repo, total: Decimal(string: "50.00")!, at: todayStart.addingTimeInterval(3600))
+        let partial = try repo.estimatedTodaySpendSinceFirstSnapshot(now: todayStart.addingTimeInterval(7200))
+        #expect(partial == nil)
+    }
+
     @Test func estimatedTodaySpendNeedsPreTodayBaseline() throws {
         let db = try DatabaseManager.ephemeral()
         let repo = UsageRepository(database: db)

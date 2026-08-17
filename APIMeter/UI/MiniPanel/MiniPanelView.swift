@@ -61,6 +61,6 @@ struct MiniPanelView: View {
     }
 
     private var todayText: String {
-        state.dashboardViewModel.today?.cost.map { CurrencyFormatter.format($0, currency: "CNY") } ?? "—"
+        state.dashboardViewModel.todayDisplayCost.map { CurrencyFormatter.format($0, currency: "CNY") } ?? "—"
     }
 }
