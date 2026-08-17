@@ -66,6 +66,39 @@ struct DatabaseTests {
         #expect(try repo.fetchImportBatches().count == 1)
     }
 
+    private func snapshot(_ repo: UsageRepository, total: Decimal, at date: Date) throws {
+        try repo.saveBalanceSnapshot(Balance(
+            isAvailable: true,
+            balanceInfos: [BalanceInfo(currency: "CNY", totalBalance: total, grantedBalance: 0, toppedUpBalance: total)],
+            fetchedAt: date
+        ))
+    }
+
+    @Test func estimatedTodaySpendTracksDropsAndIgnoresTopups() throws {
+        let db = try DatabaseManager.ephemeral()
+        let repo = UsageRepository(database: db)
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = .autoupdatingCurrent
+        let todayStart = calendar.startOfDay(for: Date())
+        try snapshot(repo, total: Decimal(string: "30.00")!, at: todayStart.addingTimeInterval(-3600))   // yesterday, last snapshot
+        try snapshot(repo, total: Decimal(string: "24.50")!, at: todayStart.addingTimeInterval(3600))    // spent 5.50
+        try snapshot(repo, total: Decimal(string: "44.50")!, at: todayStart.addingTimeInterval(7200))    // topup +20 (ignored)
+        try snapshot(repo, total: Decimal(string: "40.00")!, at: todayStart.addingTimeInterval(10800))   // spent 4.50
+        let estimate = try repo.estimatedTodaySpend(now: todayStart.addingTimeInterval(14400))
+        #expect(estimate == Decimal(string: "10.00"))
+    }
+
+    @Test func estimatedTodaySpendNeedsPreTodayBaseline() throws {
+        let db = try DatabaseManager.ephemeral()
+        let repo = UsageRepository(database: db)
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = .autoupdatingCurrent
+        let todayStart = calendar.startOfDay(for: Date())
+        try snapshot(repo, total: Decimal(string: "20.00")!, at: todayStart.addingTimeInterval(3600))
+        let estimate = try repo.estimatedTodaySpend(now: todayStart.addingTimeInterval(7200))
+        #expect(estimate == nil)
+    }
+
     @Test func reconcileDerivedCostsMatchesBilling() throws {
         let db = try DatabaseManager.ephemeral()
         let repo = UsageRepository(database: db)

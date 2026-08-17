@@ -70,9 +70,6 @@
 			name = APIMeter;
 			packageProductDependencies = (
 				A10000000000000000000010 /* GRDB */,
-				A10000000000000000000011 /* NIOCore */,
-				A10000000000000000000012 /* NIOPosix */,
-				A10000000000000000000013 /* NIOHTTP1 */,
 				A10000000000000000000019 /* KeyboardShortcuts */,
 			);
 			productName = "API Meter";
@@ -105,7 +102,6 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				A10000000000000000000016 /* XCRemoteSwiftPackageReference "GRDB.swift" */,
-				A10000000000000000000017 /* XCRemoteSwiftPackageReference "swift-nio" */,
 				A10000000000000000000018 /* XCRemoteSwiftPackageReference "KeyboardShortcuts" */,
 			);
 			preferredProjectObjectVersion = 77;
@@ -337,14 +333,6 @@
 				minimumVersion = 7.0.0;
 			};
 		};
-		A10000000000000000000017 /* XCRemoteSwiftPackageReference "swift-nio" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/apple/swift-nio.git";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 2.60.0;
-			};
-		};
 		A10000000000000000000018 /* XCRemoteSwiftPackageReference "KeyboardShortcuts" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/sindresorhus/KeyboardShortcuts.git";
@@ -360,21 +348,6 @@
 			isa = XCSwiftPackageProductDependency;
 			package = A10000000000000000000016 /* XCRemoteSwiftPackageReference "GRDB.swift" */;
 			productName = GRDB;
-		};
-		A10000000000000000000011 /* NIOCore */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = A10000000000000000000017 /* XCRemoteSwiftPackageReference "swift-nio" */;
-			productName = NIOCore;
-		};
-		A10000000000000000000012 /* NIOPosix */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = A10000000000000000000017 /* XCRemoteSwiftPackageReference "swift-nio" */;
-			productName = NIOPosix;
-		};
-		A10000000000000000000013 /* NIOHTTP1 */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = A10000000000000000000017 /* XCRemoteSwiftPackageReference "swift-nio" */;
-			productName = NIOHTTP1;
 		};
 		A10000000000000000000019 /* KeyboardShortcuts */ = {
 			isa = XCSwiftPackageProductDependency;

@@ -29,7 +29,6 @@ struct PhaseAValidator {
             case "import": try await importCommand(Array(args.dropFirst()))
             case "daily": try dailyCommand(Array(args.dropFirst()))
             case "selfcheck": try await selfCheck()
-            case "gateway": try await gatewayCommand(Array(args.dropFirst()))
             default:
                 usage()
                 exit(1)
@@ -394,52 +393,5 @@ struct PhaseAValidator {
         print("")
         print("SELFCHECK: " + String(pass) + " passed, " + String(fail) + " failed")
         if fail > 0 { exit(1) }
-    }
-
-    // MARK: - gateway
-
-    static func gatewayCommand(_ args: [String]) async throws {
-        var port = 43123
-        var upstream = DeepSeekClient.baseURL
-        if let idx = args.firstIndex(of: "--port"), let value = args.dropFirst(idx + 1).first, let parsed = Int(value) {
-            port = parsed
-        }
-        if let idx = args.firstIndex(of: "--upstream"), let value = args.dropFirst(idx + 1).first, let url = URL(string: value) {
-            upstream = url
-        }
-        let db = try DatabaseManager(path: DatabaseManager.defaultLocation().path)
-        let repository = UsageRepository(database: db)
-        let collector = UsageCollector(repository: repository)
-        let config = GatewayConfig(port: port, upstreamBaseURL: upstream)
-        let server = GatewayServer(config: config, collector: collector)
-        do {
-            try await server.start()
-        } catch let error as GatewayError {
-            print("Gateway FAILED: " + (error.errorDescription ?? "gateway error"))
-            print("Balance, CSV import and dashboard remain unaffected.")
-            exit(1)
-        }
-        print("Gateway running at http://127.0.0.1:" + String(port) + " -> " + upstream.absoluteString)
-        print("Listening on 127.0.0.1 ONLY (never 0.0.0.0). Press Ctrl-C to stop.")
-        print("Test: curl http://127.0.0.1:" + String(port) + "/chat/completions -H 'Content-Type: application/json' -H 'Authorization: Bearer YOUR_KEY' -d '{\"model\":\"deepseek-chat\",\"messages\":[{\"role\":\"user\",\"content\":\"hi\"}],\"stream\":false}'")
-        await waitForInterrupt()
-        try await server.stop()
-        print("Gateway stopped.")
-    }
-
-    static func waitForInterrupt() async {
-        await withCheckedContinuation { (cont: CheckedContinuation<Void, Never>) in
-            let source = DispatchSource.makeSignalSource(signal: SIGINT, queue: .main)
-            var resumed = false
-            source.setEventHandler {
-                if !resumed {
-                    resumed = true
-                    cont.resume()
-                    source.cancel()
-                }
-            }
-            signal(SIGINT, SIG_IGN)
-            source.resume()
-        }
     }
 }

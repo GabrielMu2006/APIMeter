@@ -19,7 +19,7 @@ public final class DashboardViewModel {
     public var selectedFingerprints: Set<String> = []
     public private(set) var summary: UsageSummary?
     public private(set) var today: DailyUsage?
-    public private(set) var gatewayToday: DailyUsage?
+    public private(set) var todayBalanceEstimate: Decimal?
     public private(set) var apiKeys: [APIKey] = []
     public private(set) var isLoading = false
     public private(set) var lastReload: Date?
@@ -60,13 +60,11 @@ public final class DashboardViewModel {
         } else {
             Log.info("Dashboard loaded: no data in range " + start.value + ".." + end.value)
         }
-        // Today is always shown separately (spec 43). The gateway-only view
-        // powers the live hint when official data already covers the day.
+        // Today is always shown separately (spec 43): official CSV first,
+        // then the balance-derived estimate as a fallback.
         let now = LocalDay(date: Date())
         today = (try? environment.repository.summary(from: now, to: now, fingerprints: nil))?.daily.first
-        let todayRecords = (try? environment.repository.recordsInRange(from: now, to: now, fingerprints: nil)) ?? []
-        let gatewayOnly = todayRecords.filter { $0.source == .localGateway }
-        gatewayToday = UsageAggregator.daily(from: gatewayOnly).first
+        todayBalanceEstimate = try? environment.repository.estimatedTodaySpend()
         lastReload = Date()
     }
 

@@ -53,13 +53,11 @@ struct AppSettingsTests {
         let first = AppSettings(defaults: defaults)
         first.balanceAlertThreshold = 20
         first.appearance = .light
-        first.gatewayPort = 43210
         first.retention = .days90
 
         let second = AppSettings(defaults: defaults)
         #expect(second.balanceAlertThreshold == 20)
         #expect(second.appearance == .light)
-        #expect(second.gatewayPort == 43210)
         #expect(second.retention == .days90)
     }
 
@@ -68,7 +66,6 @@ struct AppSettingsTests {
         let settings = AppSettings(defaults: defaults)
         #expect(settings.retention == .forever)
         #expect(settings.balanceAlertThreshold == nil)
-        #expect(settings.gatewayPort == 43123)
         #expect(settings.appearance == .system)
     }
 }

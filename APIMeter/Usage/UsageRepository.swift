@@ -245,6 +245,45 @@ public struct UsageRepository: Sendable {
         }
     }
 
+    // MARK: - Balance-derived today estimate
+
+    /// Estimates today's spend from balance snapshots (user's method):
+    /// walks today's snapshots from the last pre-today baseline and sums
+    /// only DECREASES; increases are treated as top-ups and ignored.
+    /// Returns nil when there is no pre-today snapshot to anchor against.
+    /// This is an ESTIMATE - official export data overrides it when present.
+    public func estimatedTodaySpend(now: Date = Date()) throws -> Decimal? {
+        try database.dbQueue.read { db in
+            let rows = try BalanceSnapshotRow
+                .filter(Column("currency") == "CNY")
+                .order(Column("timestamp"))
+                .fetchAll(db)
+            guard !rows.isEmpty else { return nil }
+
+            var calendar = Calendar(identifier: .gregorian)
+            calendar.timeZone = .autoupdatingCurrent
+            let todayStart = calendar.startOfDay(for: now)
+
+            let parsed: [(timestamp: Date, total: Decimal)] = rows.compactMap { row in
+                guard let date = ISO8601.date(row.timestamp) else { return nil }
+                return (date, DecimalStorage.decimal(row.total) ?? 0)
+            }
+            guard let baselineIndex = parsed.lastIndex(where: { $0.timestamp < todayStart }) else {
+                return nil
+            }
+            var previous = parsed[baselineIndex].total
+            var spend = Decimal.zero
+            var anyToday = false
+            for entry in parsed.dropFirst(baselineIndex + 1) where entry.timestamp >= todayStart {
+                anyToday = true
+                let delta = previous - entry.total
+                if delta > 0 { spend += delta }
+                previous = entry.total
+            }
+            return anyToday ? spend : nil
+        }
+    }
+
     // MARK: - Derived cost reconciliation
 
     /// Cross-checks DERIVED per-key costs (price * amount from the amount file)

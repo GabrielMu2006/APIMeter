@@ -144,22 +144,25 @@ struct DashboardView: View {
     }
 
     private var todayValue: String {
-        state.dashboardViewModel.today?.cost.map { CurrencyFormatter.format($0, currency: "CNY") } ?? "—"
+        if let cost = state.dashboardViewModel.today?.cost {
+            return CurrencyFormatter.format(cost, currency: "CNY")
+        }
+        if let estimate = state.dashboardViewModel.todayBalanceEstimate {
+            return CurrencyFormatter.format(estimate, currency: "CNY")
+        }
+        return "—"
     }
 
     private var todaySubtitle: String {
         var parts: [String] = []
         if let today = state.dashboardViewModel.today {
-            parts.append(today.verification == .official ? "Official export" : "Gateway estimate")
+            parts.append(today.verification == .official ? "Official export" : "Estimate")
             if let requests = today.requests { parts.append(String(requests) + " requests") }
             if let tokens = today.tokens { parts.append(TokenFormatter.compact(tokens) + " tokens") }
+        } else if state.dashboardViewModel.todayBalanceEstimate != nil {
+            parts.append("Balance-derived estimate")
         } else {
             parts.append("no data yet")
-        }
-        if let live = state.dashboardViewModel.gatewayToday, state.dashboardViewModel.today?.verification == .official {
-            if let liveCost = live.cost, liveCost > 0 {
-                parts.append("gateway +" + CurrencyFormatter.format(liveCost, currency: "CNY"))
-            }
         }
         return parts.joined(separator: " · ")
     }

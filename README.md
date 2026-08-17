@@ -17,7 +17,8 @@ Native macOS menu bar + floating dashboard for DeepSeek API usage.
   - Adaptive refresh (5 min visible / 15 min background) + sleep/wake
   - History retention (30D/90D/1Y/Forever) + CSV export
   - Appearance System/Light/Dark + macOS 26 Liquid Glass buttons
-  - Gateway settings (stable optional feature, 127.0.0.1 only)
+  - Local gateway REMOVED per user decision (a proxy would have been
+    required for realtime per-key usage; the user chose official data only)
   - Settings: General/DeepSeek/API Keys/Usage/Notifications/Gateway/
     Appearance/Data/About
 - [ ] Phase C+ - open source prep (docs, CI, full test matrix)
@@ -48,13 +49,13 @@ Or open `APIMeter.xcodeproj` in Xcode and press Run.
 
 1. DeepSeek Balance API - current balance (Keychain key).
 2. Official DeepSeek Usage Export (ZIP/CSV) - historical truth.
-3. Optional local gateway on 127.0.0.1:43123 - realtime estimates.
+3. Balance-derived today estimate: yesterday's remaining balance minus
+   today's, with top-up detection (increases between snapshots are ignored).
 
-Official CSV always overrides gateway estimates for the same day.
+Official CSV always overrides estimates for the same day.
 
 ## Security rules (from PROJECT_SPEC.md)
 
 - API keys only in macOS Keychain; SQLite stores SHA256 fingerprints only.
 - No browser cookie reading, no Usage page scraping, no HTTPS MITM.
-- Gateway listens on 127.0.0.1 only, never 0.0.0.0.
 - Logs never contain keys, prompts, completions or cookies.

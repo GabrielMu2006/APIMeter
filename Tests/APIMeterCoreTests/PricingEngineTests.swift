@@ -31,15 +31,6 @@ struct PricingEngineTests {
         #expect(cost == Decimal(string: "6.5"))
     }
 
-    @Test func latestRuleFallsBackAfterExpiry() throws {
-        let expired = PriceRule(model: "m", effectiveFrom: try date("2026-01-01T00:00:00Z"), effectiveTo: try date("2026-06-01T00:00:00Z"), cacheHitPrice: Decimal(1), cacheMissPrice: Decimal(2), outputPrice: Decimal(3), currency: "CNY")
-        let at = try date("2026-08-01T00:00:00Z")
-        // strict selection: none
-        #expect(PricingEngine.selectRule(model: "m", at: at, rules: [expired]) == nil)
-        // estimation fallback: last known rule (still used only for estimated rows)
-        #expect(PricingEngine.latestRule(model: "m", at: at, rules: [expired])?.cacheHitPrice == Decimal(1))
-    }
-
     @Test func noPricesMeansNoCost() {
         let rule = PriceRule(model: "m", effectiveFrom: Date(), currency: "CNY")
         let cost = PricingEngine.cost(cacheHitTokens: 100, cacheMissTokens: 100, outputTokens: 100, rule: rule)

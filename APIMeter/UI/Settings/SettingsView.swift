@@ -17,8 +17,6 @@ struct SettingsView: View {
                 .tabItem { Label("Usage", systemImage: "clock.arrow.circlepath") }
             NotificationSettingsView(state: state)
                 .tabItem { Label("Notifications", systemImage: "bell.badge") }
-            GatewaySettingsView(state: state)
-                .tabItem { Label("Gateway", systemImage: "network") }
             AppearanceSettingsView(state: state)
                 .tabItem { Label("Appearance", systemImage: "paintbrush") }
             DataSettingsView(state: state)

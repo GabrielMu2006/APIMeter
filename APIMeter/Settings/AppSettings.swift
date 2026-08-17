@@ -41,8 +41,6 @@ public final class AppSettings {
     private enum Keys {
         static let retention = "settings.retention"
         static let balanceThreshold = "settings.balanceThreshold"
-        static let gatewayEnabled = "settings.gateway.enabled"
-        static let gatewayPort = "settings.gateway.port"
         static let launchAtLogin = "settings.launchAtLogin"
         static let showDockIcon = "settings.showDockIcon"
         static let appearance = "settings.appearance"
@@ -54,9 +52,6 @@ public final class AppSettings {
         self.defaults = defaults
         self.retention = defaults.string(forKey: Keys.retention).flatMap(HistoryRetention.init(rawValue:)) ?? .forever
         self.balanceAlertThreshold = defaults.string(forKey: Keys.balanceThreshold).flatMap(DecimalStorage.decimal)
-        self.gatewayEnabled = defaults.bool(forKey: Keys.gatewayEnabled)
-        let storedPort = defaults.integer(forKey: Keys.gatewayPort)
-        self.gatewayPort = storedPort > 0 ? storedPort : 43123
         self.launchAtLogin = defaults.bool(forKey: Keys.launchAtLogin)
         self.showDockIcon = defaults.object(forKey: Keys.showDockIcon) == nil ? false : defaults.bool(forKey: Keys.showDockIcon)
         self.appearance = defaults.string(forKey: Keys.appearance).flatMap(AppearanceMode.init(rawValue:)) ?? .system
@@ -71,15 +66,6 @@ public final class AppSettings {
     /// Balance alert threshold; nil = alerts disabled.
     public var balanceAlertThreshold: Decimal? {
         didSet { defaults.set(balanceAlertThreshold.map(DecimalStorage.string), forKey: Keys.balanceThreshold) }
-    }
-
-    public var gatewayEnabled: Bool {
-        didSet { defaults.set(gatewayEnabled, forKey: Keys.gatewayEnabled) }
-    }
-
-    /// Default port per spec 20. Always validated for conflicts at start.
-    public var gatewayPort: Int {
-        didSet { defaults.set(gatewayPort, forKey: Keys.gatewayPort) }
     }
 
     public var launchAtLogin: Bool {
