@@ -5,7 +5,6 @@ import SwiftUI
 struct MenuBarView: View {
     @Bindable var state: AppState
     @Environment(\.openSettings) private var openSettings
-    @Environment(\.openWindow) private var openWindow
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -39,8 +38,7 @@ struct MenuBarView: View {
 
             HStack {
                 Button("Open Dashboard") {
-                    openWindow(id: "dashboard")
-                    NSApp.activate()
+                    state.toggleDashboard()
                 }
                 Spacer()
                 Button {
@@ -55,6 +53,7 @@ struct MenuBarView: View {
         }
         .padding()
         .frame(width: 300)
+        .apiMeterAppearance(state.environment.settings.appearance)
         .task {
             await state.refreshAll()
         }

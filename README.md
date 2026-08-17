@@ -5,56 +5,44 @@ Native macOS menu bar + floating dashboard for DeepSeek API usage.
 ## Status
 
 - [x] Phase A - technical validation (complete)
-  - Balance API live: PASS (real key, real balance)
-  - CSV schema documented from real exports (docs/deepseek-csv-schema.md)
-  - 43 unit tests passing
 - [x] Phase B - MVP (complete)
-  - MenuBarExtra quick panel: balance, today, 7-day mini trend, top keys
-  - Dashboard: metric cards, 7D/30D/Month/Custom ranges, Swift Charts trend,
-    daily history with per-day detail, multi-select API key filter
-  - Settings: DeepSeek key (Keychain only), key aliases, data import/clear
-  - CSV import UI: file picker + drag & drop (ZIP and CSV)
-  - Real data: 8 official days, 20.13 CNY, 1067 requests, 5 named keys
-  - Per-key cost DERIVED from official price x amount rows, cross-checked
-    against billing totals at import (mismatch -> estimated, never guessed)
-- [ ] Phase C - full V1 (NSPanel pin, mini mode, notifications, gateway stable)
-- [ ] Phase C+ - open source prep
+- [x] Phase C - full V1 (complete)
+  - Floating NSPanel dashboard: pin (floating level), mini mode, window
+    state restore (position/size/pin/mini)
+  - Mini panel: balance + today only, draggable, right-click actions,
+    double-click to expand
+  - Global shortcut (default Option+Space, recorder in Settings)
+  - Launch at Login (SMAppService), Dock icon toggle
+  - Balance alert with threshold + anti-spam state machine
+  - Adaptive refresh (5 min visible / 15 min background) + sleep/wake
+  - History retention (30D/90D/1Y/Forever) + CSV export
+  - Appearance System/Light/Dark + macOS 26 Liquid Glass buttons
+  - Gateway settings (stable optional feature, 127.0.0.1 only)
+  - Settings: General/DeepSeek/API Keys/Usage/Notifications/Gateway/
+    Appearance/Data/About
+- [ ] Phase C+ - open source prep (docs, CI, full test matrix)
+
+## Verified with real data (this account)
+
+- Balance via official API (Keychain key)
+- Official exports imported: 8 days, 20.13 CNY, 1067 requests,
+  139,356,082 tokens, 5 named keys
+- Per-key cost derived from official price x amount rows and
+  cross-checked against billing totals (exact match)
+- 54 unit tests passing
 
 ## Build & run
 
 ```bash
-# Core library + validation CLI + tests (SwiftPM)
-swift build
-swift test
+swift build && swift test
 .build/debug/apimeter selfcheck
 
-# The macOS app (Xcode project)
 xcodebuild -project APIMeter.xcodeproj -scheme APIMeter \
   -configuration Debug -derivedDataPath .build/DerivedData build
 open ".build/DerivedData/Build/Products/Debug/API Meter.app"
 ```
 
 Or open `APIMeter.xcodeproj` in Xcode and press Run.
-
-## Layout
-
-```
-APIMeter/            app + core sources (Xcode app target + SPM library)
-  App/               SwiftUI entry, AppState, AppEnvironment
-  Models/            Balance, APIKey, UsageRecord, DailyUsage, ...
-  DeepSeek/          balance client
-  Security/          KeychainService, KeyFingerprint
-  Database/          GRDB manager, migration v1, row structs
-  Import/            CSV parser, schema detector, official mapper, dedup
-  Usage/             repository, aggregator, reconciler, pricing
-  Gateway/           local gateway (127.0.0.1 only) - experimental
-  UI/                MenuBar, Dashboard, History, Settings views
-  ViewModels/        Balance/Dashboard/Settings view models
-Tools/PhaseAValidator   validation CLI (apimeter)
-Tools/mock-upstream.py  dev-only mock DeepSeek server
-Tests/               43 unit tests
-docs/                 schema + phase reports (samples are gitignored)
-```
 
 ## Data sources
 

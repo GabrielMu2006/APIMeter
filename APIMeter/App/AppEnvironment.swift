@@ -9,6 +9,8 @@ public final class AppEnvironment {
     public let keychain: KeychainService
     public let settings: AppSettings
     public let importService: UsageImportService
+    public let alertService: BalanceAlertService
+    public let gatewayManager: GatewayManager
     public let balanceProvider: (String) -> BalanceProvider
 
     public init(database: DatabaseManager, keychain: KeychainService = KeychainService(), settings: AppSettings = .shared) {
@@ -17,6 +19,8 @@ public final class AppEnvironment {
         self.keychain = keychain
         self.settings = settings
         self.importService = UsageImportService(repository: self.repository)
+        self.alertService = BalanceAlertService()
+        self.gatewayManager = GatewayManager(settings: settings, repository: self.repository)
         self.balanceProvider = { fingerprint in
             DeepSeekBalanceProvider(keychain: keychain, fingerprint: fingerprint)
         }

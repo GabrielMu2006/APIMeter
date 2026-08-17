@@ -58,6 +58,7 @@ struct DashboardView: View {
         }
         .padding(16)
         .frame(minWidth: 760, minHeight: 540)
+        .apiMeterAppearance(state.environment.settings.appearance)
         .task {
             await state.refreshAll()
             // Verification aid: auto-open the latest day's detail sheet.
@@ -86,6 +87,7 @@ struct DashboardView: View {
                 Label("Refresh", systemImage: "arrow.clockwise")
             }
             .disabled(state.balanceViewModel.isLoading || state.dashboardViewModel.isLoading)
+            .glassButtonStyle()
         }
     }
 

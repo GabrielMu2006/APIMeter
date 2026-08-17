@@ -38,6 +38,7 @@ public final class BalanceViewModel {
             balance = fresh
             lastError = nil
             try environment.repository.saveBalanceSnapshot(fresh)
+            await environment.alertService.check(balance: fresh, threshold: environment.settings.balanceAlertThreshold)
             Log.info("Balance refreshed from API (fingerprint " + KeyFingerprint.displayPrefix(fingerprint, length: 8) + "...)")
         } catch {
             lastError = error.localizedDescription

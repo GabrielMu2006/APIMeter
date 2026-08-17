@@ -1,5 +1,7 @@
+import AppKit
 import Foundation
 import Observation
+import UniformTypeIdentifiers
 
 /// Settings actions: API key management, import, data maintenance.
 @MainActor
@@ -82,6 +84,25 @@ public final class SettingsViewModel {
             await reload()
         } catch {
             importMessage = error.localizedDescription
+        }
+    }
+
+    /// Exports all local usage as CSV (spec 61).
+    public func exportCSV() async {
+        let panel = NSSavePanel()
+        panel.nameFieldStringValue = "apimeter-export.csv"
+        panel.allowedContentTypes = [.commaSeparatedText]
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        do {
+            let records = try environment.repository.recordsInRange(
+                from: LocalDay("2000-01-01")!,
+                to: LocalDay("2100-01-01")!
+            )
+            let csv = UsageExportService.csvData(records: records)
+            try csv.write(to: url, atomically: true, encoding: .utf8)
+            importMessage = "Exported " + String(records.count) + " rows."
+        } catch {
+            importMessage = "Export failed: " + error.localizedDescription
         }
     }
 

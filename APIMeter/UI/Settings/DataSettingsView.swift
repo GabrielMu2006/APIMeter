@@ -42,6 +42,14 @@ struct DataSettingsView: View {
             }
 
             Section("Local Data") {
+                HStack {
+                    Button("Export Local Data (CSV)...") {
+                        Task { await state.settingsViewModel.exportCSV() }
+                    }
+                    if let message = state.settingsViewModel.importMessage, message.hasPrefix("Exported") {
+                        Text(message).font(.caption).foregroundStyle(.secondary)
+                    }
+                }
                 LabeledContent("Imported files", value: String(state.settingsViewModel.importedBatches.count))
                 LabeledContent("Database size", value: ByteCountFormatter.string(fromByteCount: state.settingsViewModel.databaseSizeBytes, countStyle: .file))
                 if !state.settingsViewModel.importedBatches.isEmpty {

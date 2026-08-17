@@ -25,7 +25,7 @@ let package = Package(
                 .product(name: "NIOHTTP1", package: "swift-nio"),
             ],
             path: "APIMeter",
-            exclude: ["App", "UI", "ViewModels"]
+            exclude: ["App", "UI", "ViewModels", "Window"]
         ),
         .executableTarget(
             name: "PhaseAValidator",
