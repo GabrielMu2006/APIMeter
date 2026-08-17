@@ -13,6 +13,7 @@ if [ ! -x "$NODE_BIN" ]; then
 fi
 echo "  Node: $("$NODE_BIN" --version)"
 echo "[2/3] installing npm dependencies (playwright + chromium)..."
+export PATH="$SCRIPT_DIR/runtime/node-v24.19.0-darwin-arm64/bin:$PATH"
 "$NODE_BIN" "$SCRIPT_DIR/runtime/node-v24.19.0-darwin-arm64/bin/npm" install --no-fund --no-audit
 echo "[3/3] downloading Chromium for Playwright..."
 "$NODE_BIN" "$SCRIPT_DIR/runtime/node-v24.19.0-darwin-arm64/bin/npx" playwright install chromium

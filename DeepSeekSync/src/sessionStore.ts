@@ -19,7 +19,7 @@ export function saveSession(sessionJson: string): void {
 
 export function loadSession(): string | null {
   try {
-    const out = execFileSync("security", ["find-generic-password", "-s", KEYCHAIN_SERVICE, "-a", KEYCHAIN_ACCOUNT, "-w"], { encoding: "utf8" });
+    const out = execFileSync("security", ["find-generic-password", "-s", KEYCHAIN_SERVICE, "-a", KEYCHAIN_ACCOUNT, "-w"], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
     return Buffer.from(out.trim(), "base64").toString("utf8");
   } catch {
     return null;
