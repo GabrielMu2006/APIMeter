@@ -1,4 +1,5 @@
 import Foundation
+import Observation
 
 /// History retention choices (spec 15/84). Only affects usage_records;
 /// import_batches metadata is always kept for dedup.
@@ -26,7 +27,14 @@ public enum AppearanceMode: String, CaseIterable, Sendable, Codable {
 
 /// User preferences via UserDefaults. SECURITY: never store API keys or other
 /// secrets here (spec 8) - Keychain only.
-public final class AppSettings: @unchecked Sendable {
+///
+/// OBSERVABLE: stored properties back every preference so SwiftUI views
+/// re-render immediately when a setting changes (pickles like the alert
+/// threshold picker and the appearance radio group depend on this).
+/// Every setter persists to UserDefaults right away.
+@MainActor
+@Observable
+public final class AppSettings {
     public static let shared = AppSettings()
 
     private let defaults: UserDefaults
@@ -44,55 +52,53 @@ public final class AppSettings: @unchecked Sendable {
 
     public init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
+        self.retention = defaults.string(forKey: Keys.retention).flatMap(HistoryRetention.init(rawValue:)) ?? .forever
+        self.balanceAlertThreshold = defaults.string(forKey: Keys.balanceThreshold).flatMap(DecimalStorage.decimal)
+        self.gatewayEnabled = defaults.bool(forKey: Keys.gatewayEnabled)
+        let storedPort = defaults.integer(forKey: Keys.gatewayPort)
+        self.gatewayPort = storedPort > 0 ? storedPort : 43123
+        self.launchAtLogin = defaults.bool(forKey: Keys.launchAtLogin)
+        self.showDockIcon = defaults.object(forKey: Keys.showDockIcon) == nil ? false : defaults.bool(forKey: Keys.showDockIcon)
+        self.appearance = defaults.string(forKey: Keys.appearance).flatMap(AppearanceMode.init(rawValue:)) ?? .system
+        self.restoreWindowState = defaults.object(forKey: Keys.restoreWindowState) == nil ? true : defaults.bool(forKey: Keys.restoreWindowState)
+        self.openDashboardAtLaunch = defaults.bool(forKey: Keys.openDashboardAtLaunch)
     }
 
     public var retention: HistoryRetention {
-        get { defaults.string(forKey: Keys.retention).flatMap(HistoryRetention.init(rawValue:)) ?? .forever }
-        set { defaults.set(newValue.rawValue, forKey: Keys.retention) }
+        didSet { defaults.set(retention.rawValue, forKey: Keys.retention) }
     }
 
     /// Balance alert threshold; nil = alerts disabled.
     public var balanceAlertThreshold: Decimal? {
-        get { defaults.string(forKey: Keys.balanceThreshold).flatMap(DecimalStorage.decimal) }
-        set { defaults.set(newValue.map(DecimalStorage.string), forKey: Keys.balanceThreshold) }
+        didSet { defaults.set(balanceAlertThreshold.map(DecimalStorage.string), forKey: Keys.balanceThreshold) }
     }
 
     public var gatewayEnabled: Bool {
-        get { defaults.bool(forKey: Keys.gatewayEnabled) }
-        set { defaults.set(newValue, forKey: Keys.gatewayEnabled) }
+        didSet { defaults.set(gatewayEnabled, forKey: Keys.gatewayEnabled) }
     }
 
     /// Default port per spec 20. Always validated for conflicts at start.
     public var gatewayPort: Int {
-        get {
-            let stored = defaults.integer(forKey: Keys.gatewayPort)
-            return stored > 0 ? stored : 43123
-        }
-        set { defaults.set(newValue, forKey: Keys.gatewayPort) }
+        didSet { defaults.set(gatewayPort, forKey: Keys.gatewayPort) }
     }
 
     public var launchAtLogin: Bool {
-        get { defaults.bool(forKey: Keys.launchAtLogin) }
-        set { defaults.set(newValue, forKey: Keys.launchAtLogin) }
+        didSet { defaults.set(launchAtLogin, forKey: Keys.launchAtLogin) }
     }
 
     public var showDockIcon: Bool {
-        get { defaults.object(forKey: Keys.showDockIcon) == nil ? false : defaults.bool(forKey: Keys.showDockIcon) }
-        set { defaults.set(newValue, forKey: Keys.showDockIcon) }
+        didSet { defaults.set(showDockIcon, forKey: Keys.showDockIcon) }
     }
 
     public var appearance: AppearanceMode {
-        get { defaults.string(forKey: Keys.appearance).flatMap(AppearanceMode.init(rawValue:)) ?? .system }
-        set { defaults.set(newValue.rawValue, forKey: Keys.appearance) }
+        didSet { defaults.set(appearance.rawValue, forKey: Keys.appearance) }
     }
 
     public var restoreWindowState: Bool {
-        get { defaults.object(forKey: Keys.restoreWindowState) == nil ? true : defaults.bool(forKey: Keys.restoreWindowState) }
-        set { defaults.set(newValue, forKey: Keys.restoreWindowState) }
+        didSet { defaults.set(restoreWindowState, forKey: Keys.restoreWindowState) }
     }
 
     public var openDashboardAtLaunch: Bool {
-        get { defaults.bool(forKey: Keys.openDashboardAtLaunch) }
-        set { defaults.set(newValue, forKey: Keys.openDashboardAtLaunch) }
+        didSet { defaults.set(openDashboardAtLaunch, forKey: Keys.openDashboardAtLaunch) }
     }
 }

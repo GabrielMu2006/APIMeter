@@ -43,10 +43,14 @@ struct GatewaySettingsView: View {
                     }
                 }
             }
-            Section("About the Gateway") {
-                Text("Listens on 127.0.0.1 only and transparently forwards requests to DeepSeek. Prompts and completions are never stored.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+            Section("What does the gateway do?") {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Point your coding tools or scripts at the local endpoint instead of api.deepseek.com directly. The gateway forwards every request transparently and records only usage metadata (tokens, requests, estimated cost) into your local database in realtime.")
+                    Text("That makes Today, request counts and per-key estimates update within a minute between official export imports - without ever storing your prompts or completions.")
+                    Text("Optional: balance and official CSV history work without it.")
+                }
+                .font(.caption)
+                .foregroundStyle(.secondary)
                 if let error = gateway.errorMessage {
                     Label(error, systemImage: "exclamationmark.triangle.fill")
                         .foregroundStyle(.orange)

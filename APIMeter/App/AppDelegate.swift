@@ -5,6 +5,7 @@ import ServiceManagement
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var refreshCoordinator: RefreshCoordinator?
 
+    @MainActor
     func applicationDidFinishLaunching(_ notification: Notification) {
         Log.info("AppDelegate.didFinishLaunching")
         applyActivationPolicy()
@@ -38,6 +39,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     /// Dock icon toggle (spec 51) - updates the activation policy immediately.
+    @MainActor
     func applyActivationPolicy() {
         let policy: NSApplication.ActivationPolicy = AppSettings.shared.showDockIcon ? .regular : .accessory
         NSApp.setActivationPolicy(policy)
