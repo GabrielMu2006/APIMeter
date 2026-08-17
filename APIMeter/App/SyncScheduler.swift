@@ -102,7 +102,10 @@ public final class SyncScheduler {
     }
 
     private func runSyncCLI() async -> CLIOutput? {
-        let toolDir = environment.settings.syncToolPath
+        guard let toolDir = environment.settings.syncToolPath, !toolDir.isEmpty else {
+            finish(ok: false, message: "DeepSeekSync not configured - set its path in Settings > Data")
+            return nil
+        }
         let cliPath = toolDir + "/deepseek-sync"
         guard FileManager.default.isExecutableFile(atPath: cliPath) else {
             finish(ok: false, message: "DeepSeekSync not found at " + cliPath)

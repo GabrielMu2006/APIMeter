@@ -43,6 +43,11 @@ struct DataSettingsView: View {
 
             Section("Daily Export Sync") {
                 LabeledContent("Status", value: syncStatusText)
+                TextField("DeepSeekSync path (empty = disabled)", text: Binding(
+                    get: { state.environment.settings.syncToolPath ?? "" },
+                    set: { state.environment.settings.syncToolPath = $0.isEmpty ? nil : $0 }
+                ))
+                .textFieldStyle(.roundedBorder)
                 LabeledContent("Next run", value: state.syncScheduler?.nextRunText ?? "unknown")
                 Text("The daily sync runs once a day at 00:30 (hidden browser) and imports the official export automatically. The Refresh button only updates the balance - it never triggers a sync.")
                     .font(.caption2)

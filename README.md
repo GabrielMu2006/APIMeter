@@ -2,60 +2,48 @@
 
 Native macOS menu bar + floating dashboard for DeepSeek API usage.
 
-## Status
+## Features
 
-- [x] Phase A - technical validation (complete)
-- [x] Phase B - MVP (complete)
-- [x] Phase C - full V1 (complete)
-  - Floating NSPanel dashboard: pin (floating level), mini mode, window
-    state restore (position/size/pin/mini)
-  - Mini panel: balance + today only, draggable, right-click actions,
-    double-click to expand
-  - Global shortcut (default Option+Space, recorder in Settings)
-  - Launch at Login (SMAppService), Dock icon toggle
-  - Balance alert with threshold + anti-spam state machine
-  - Adaptive refresh (5 min visible / 15 min background) + sleep/wake
-  - History retention (30D/90D/1Y/Forever) + CSV export
-  - Appearance System/Light/Dark + macOS 26 Liquid Glass buttons
-  - Local gateway REMOVED per user decision (a proxy would have been
-    required for realtime per-key usage; the user chose official data only)
-  - Settings: General/DeepSeek/API Keys/Usage/Notifications/Gateway/
-    Appearance/Data/About
-- [ ] Phase C+ - open source prep (docs, CI, full test matrix)
-
-## Verified with real data (this account)
-
-- Balance via official API (Keychain key)
-- Official exports imported: 8 days, 20.13 CNY, 1067 requests,
-  139,356,082 tokens, 5 named keys
-- Per-key cost derived from official price x amount rows and
-  cross-checked against billing totals (exact match)
-- 54 unit tests passing
-
-## Build & run
-
-```bash
-swift build && swift test
-.build/debug/apimeter selfcheck
-
-xcodebuild -project APIMeter.xcodeproj -scheme APIMeter \
-  -configuration Debug -derivedDataPath .build/DerivedData build
-open ".build/DerivedData/Build/Products/Debug/API Meter.app"
-```
-
-Or open `APIMeter.xcodeproj` in Xcode and press Run.
+- Menu bar quick panel: balance, today, 7-day trend, top API keys
+- Floating dashboard: metric cards, 7D/30D/Month/Custom ranges, bar chart
+  with per-day per-key tooltip, daily history with day detail
+- Per-key cost derived from official price x amount rows, cross-checked
+  against billing totals (replace semantics - no double counting)
+- Today = balance-delta estimate with top-up detection (official exports
+  are authoritative for completed days)
+- Daily export sync at 00:30 via the bundled DeepSeekSync (Playwright,
+  Keychain session, never stores credentials)
+- Balance alerts with anti-spam state machine, launch at login, global
+  shortcut, dock icon toggle, light/dark, macOS 26 glass
 
 ## Data sources
 
 1. DeepSeek Balance API - current balance (Keychain key).
 2. Official DeepSeek Usage Export (ZIP/CSV) - historical truth.
-3. Balance-derived today estimate: yesterday's remaining balance minus
-   today's, with top-up detection (increases between snapshots are ignored).
+3. Balance-derived estimate - today only, with top-up detection.
 
-Official CSV always overrides estimates for the same day.
+## Build
 
-## Security rules (from PROJECT_SPEC.md)
+```bash
+swift build && swift test
+xcodebuild -project APIMeter.xcodeproj -scheme APIMeter \
+  -configuration Release -derivedDataPath .build/DerivedData-Release build
+```
 
-- API keys only in macOS Keychain; SQLite stores SHA256 fingerprints only.
-- No browser cookie reading, no Usage page scraping, no HTTPS MITM.
+## Security & privacy
+
+- API keys only in the macOS Keychain; SQLite stores SHA256 fingerprints only.
+- No browser cookie reading, no Usage page scraping beyond the official
+  export button (see PROJECT_SPEC.md DR-001), no HTTPS MITM.
 - Logs never contain keys, prompts, completions or cookies.
+- See PRIVACY.md for details.
+
+## Layout
+
+```
+APIMeter/            app + core sources
+Tools/PhaseAValidator   validation CLI (apimeter)
+DeepSeekSync/        Playwright export downloader (standalone)
+Tests/               Swift Testing unit tests
+docs/                schema + phase reports (samples gitignored)
+```

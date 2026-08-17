@@ -1,0 +1,19 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and test core (SPM)
+        run: swift build && swift test
+      - name: Build the macOS app
+        run: >
+          xcodebuild -project APIMeter.xcodeproj -scheme APIMeter
+          -configuration Debug -derivedDataPath .build/DerivedData
+          CODE_SIGNING_ALLOWED=NO build

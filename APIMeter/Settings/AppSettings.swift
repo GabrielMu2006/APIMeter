@@ -62,7 +62,7 @@ public final class AppSettings {
         self.openDashboardAtLaunch = defaults.bool(forKey: Keys.openDashboardAtLaunch)
         self.lastSyncDay = defaults.string(forKey: Keys.lastSyncDay)
         self.lastSyncResult = defaults.string(forKey: Keys.lastSyncResult)
-        self.syncToolPath = defaults.string(forKey: Keys.syncToolPath) ?? "/Users/gabrielmu/Documents/API Meter/DeepSeekSync"
+        self.syncToolPath = defaults.string(forKey: Keys.syncToolPath)
     }
 
     public var retention: HistoryRetention {
@@ -105,7 +105,8 @@ public final class AppSettings {
     }
 
     /// Directory containing the deepseek-sync CLI (with its bundled Node).
-    public var syncToolPath: String {
+    /// nil = daily export sync not configured (no machine-specific paths).
+    public var syncToolPath: String? {
         didSet { defaults.set(syncToolPath, forKey: Keys.syncToolPath) }
     }
 }
