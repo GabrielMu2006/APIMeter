@@ -28,7 +28,7 @@ struct UsageChart: View {
     var body: some View {
         if entries.isEmpty {
             EmptyStateView()
-                .frame(maxWidth: .infinity, minHeight: 220)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
             Chart(entries) { entry in
                 BarMark(
@@ -39,7 +39,6 @@ struct UsageChart: View {
                 .cornerRadius(2)
             }
             .chartYAxisLabel("Cost")
-            .frame(minHeight: 220)
         }
     }
 }

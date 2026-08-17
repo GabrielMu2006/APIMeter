@@ -1,11 +1,14 @@
 import SwiftUI
 
 /// Full dashboard (spec 35/36). Data comes exclusively from view models.
+/// Layout: metric cards -> filters -> compact chart -> daily list + key
+/// breakdown sharing the remaining space.
 struct DashboardView: View {
     @Bindable var state: AppState
+    @Environment(\.openSettings) private var openSettings
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 12) {
             header
 
             HStack(spacing: 10) {
@@ -51,13 +54,22 @@ struct DashboardView: View {
             }
 
             UsageChart(daily: state.dashboardViewModel.summary?.daily ?? [])
+                .frame(height: 150)
 
-            DailyUsageList(daily: state.dashboardViewModel.summary?.daily ?? []) { day in
-                state.selectedDay = day
+            HStack(alignment: .top, spacing: 12) {
+                DailyUsageList(daily: state.dashboardViewModel.summary?.daily ?? []) { day in
+                    state.selectedDay = day
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+                APIKeyBreakdownView(state: state)
+                    .frame(width: 300)
+                    .frame(maxHeight: .infinity)
             }
+            .frame(maxHeight: .infinity)
         }
         .padding(16)
-        .frame(minWidth: 760, minHeight: 540)
+        .frame(minWidth: 780, minHeight: 560)
         .apiMeterAppearance(state.environment.settings.appearance)
         .task {
             await state.refreshAll()
@@ -75,12 +87,30 @@ struct DashboardView: View {
     }
 
     private var header: some View {
-        HStack {
+        HStack(spacing: 10) {
             VStack(alignment: .leading, spacing: 2) {
                 Text("API Meter").font(.title2.weight(.semibold))
                 Text(updatedText).font(.caption).foregroundStyle(.secondary)
             }
             Spacer()
+            Button {
+                state.floatingPanelController?.togglePin()
+            } label: {
+                Image(systemName: state.floatingPanelController?.isPinned == true ? "pin.fill" : "pin")
+            }
+            .help("Pin keeps the window floating above others")
+            Button {
+                state.floatingPanelController?.setMini(true)
+            } label: {
+                Image(systemName: "rectangle.compress.vertical")
+            }
+            .help("Switch to Mini mode")
+            Button {
+                openSettings()
+            } label: {
+                Image(systemName: "gearshape")
+            }
+            .help("Settings")
             Button {
                 Task { await state.refreshAll() }
             } label: {
@@ -92,10 +122,14 @@ struct DashboardView: View {
     }
 
     private var updatedText: String {
+        var parts: [String] = []
         if let date = state.balanceViewModel.balance?.fetchedAt {
-            return "Balance updated " + date.formatted(date: .omitted, time: .shortened)
+            parts.append("Balance " + date.formatted(date: .omitted, time: .shortened))
         }
-        return "No balance yet"
+        if let reload = state.dashboardViewModel.lastReload {
+            parts.append("Data " + reload.formatted(date: .omitted, time: .shortened))
+        }
+        return parts.isEmpty ? "No data yet" : parts.joined(separator: " · ")
     }
 
     private var balanceValue: String {
@@ -114,10 +148,20 @@ struct DashboardView: View {
     }
 
     private var todaySubtitle: String {
-        let requests = state.dashboardViewModel.today?.requests.map { String($0) + " requests" } ?? ""
-        let tokens = state.dashboardViewModel.today?.tokens.map { TokenFormatter.compact($0) + " tokens" } ?? ""
-        if requests.isEmpty && tokens.isEmpty { return "no data yet" }
-        return [requests, tokens].filter { !$0.isEmpty }.joined(separator: " · ")
+        var parts: [String] = []
+        if let today = state.dashboardViewModel.today {
+            parts.append(today.verification == .official ? "Official export" : "Gateway estimate")
+            if let requests = today.requests { parts.append(String(requests) + " requests") }
+            if let tokens = today.tokens { parts.append(TokenFormatter.compact(tokens) + " tokens") }
+        } else {
+            parts.append("no data yet")
+        }
+        if let live = state.dashboardViewModel.gatewayToday, state.dashboardViewModel.today?.verification == .official {
+            if let liveCost = live.cost, liveCost > 0 {
+                parts.append("gateway +" + CurrencyFormatter.format(liveCost, currency: "CNY"))
+            }
+        }
+        return parts.joined(separator: " · ")
     }
 
     private var periodCost: String {

@@ -1,24 +1,27 @@
 import AppKit
 
 /// Adaptive refresh (spec 55):
-/// - floating panel visible: every 5 minutes
-/// - menu bar only: every 15 minutes
+/// - floating panel visible: local reload every 60 s, network every 5 min
+/// - menu bar only: network every 15 min
 /// - sleep: stop; wake: refresh immediately
-/// Manual refresh is always available from the UI.
 @MainActor
 public final class RefreshCoordinator {
     private let state: AppState
-    private var timer: Timer?
+    private var localTimer: Timer?
+    private var networkTimer: Timer?
 
     public init(state: AppState) {
         self.state = state
     }
 
     public func start() {
-        schedule(interval: 15 * 60)
+        scheduleNetwork(interval: 15 * 60)
         let center = NSWorkspace.shared.notificationCenter
         center.addObserver(forName: NSWorkspace.willSleepNotification, object: nil, queue: .main) { [weak self] _ in
-            Task { @MainActor in self?.timer?.invalidate() }
+            Task { @MainActor in
+                self?.localTimer?.invalidate()
+                self?.networkTimer?.invalidate()
+            }
         }
         center.addObserver(forName: NSWorkspace.didWakeNotification, object: nil, queue: .main) { [weak self] _ in
             Task { @MainActor in
@@ -29,23 +32,38 @@ public final class RefreshCoordinator {
     }
 
     public func notePanelVisibilityChanged(visible: Bool) {
-        schedule(interval: visible ? 5 * 60 : 15 * 60)
         if visible {
+            scheduleNetwork(interval: 5 * 60)
+            startLocalTimer()
             Task { await state.refreshAll() }
+        } else {
+            localTimer?.invalidate()
+            localTimer = nil
+            scheduleNetwork(interval: 15 * 60)
         }
     }
 
     private func reschedule() {
         let visible = state.floatingPanelController?.isVisible ?? false
-        schedule(interval: visible ? 5 * 60 : 15 * 60)
+        notePanelVisibilityChanged(visible: visible)
     }
 
-    private func schedule(interval: TimeInterval) {
-        timer?.invalidate()
+    /// Local (SQLite-only) reload: cheap, picks up gateway writes quickly.
+    private func startLocalTimer() {
+        localTimer?.invalidate()
+        let timer = Timer(timeInterval: 60, repeats: true) { [weak self] _ in
+            Task { @MainActor in await self?.state.dashboardViewModel.reload() }
+        }
+        RunLoop.main.add(timer, forMode: .common)
+        localTimer = timer
+    }
+
+    private func scheduleNetwork(interval: TimeInterval) {
+        networkTimer?.invalidate()
         let timer = Timer(timeInterval: interval, repeats: true) { [weak self] _ in
             Task { @MainActor in await self?.state.refreshAll() }
         }
         RunLoop.main.add(timer, forMode: .common)
-        self.timer = timer
+        networkTimer = timer
     }
 }
