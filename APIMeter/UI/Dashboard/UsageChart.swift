@@ -67,11 +67,15 @@ struct UsageChart: View {
                         .gesture(
                             DragGesture(minimumDistance: 0)
                                 .onChanged { value in
-                                    guard let date: Date = proxy.value(atX: value.location.x) else {
-                                        hoveredDay = nil
-                                        return
+                                    // Pixel proximity: the bar under the cursor
+                                    // wins (time-distance matching snapped to
+                                    // neighboring bars on small columns).
+                                    let best = entries.min { a, b in
+                                        let da = abs((proxy.position(forX: a.date) ?? 0) - value.location.x)
+                                        let db = abs((proxy.position(forX: b.date) ?? 0) - value.location.x)
+                                        return da < db
                                     }
-                                    hoveredDay = nearestEntry(to: date)?.id
+                                    hoveredDay = best?.id
                                 }
                                 .onEnded { _ in hoveredDay = nil }
                         )
@@ -116,10 +120,6 @@ struct UsageChart: View {
             }
         }
         return dates
-    }
-
-    private func nearestEntry(to date: Date) -> Entry? {
-        entries.min { abs($0.date.timeIntervalSince(date)) < abs($1.date.timeIntervalSince(date)) }
     }
 
     @ViewBuilder

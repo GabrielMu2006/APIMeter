@@ -1,12 +1,18 @@
 import SwiftUI
 
 /// One day's detail (spec 42): totals + per-key breakdown.
-/// V1 does not expand the model dimension.
+/// TODAY is special: the headline cost is the balance-derived estimate
+/// (live, cannot be split per key); the per-key breakdown below comes
+/// from the latest official export and is stamped with its import time.
 struct DailyDetailView: View {
     @Bindable var state: AppState
     let day: LocalDay
     @State private var summary: UsageSummary?
     @State private var loaded = false
+
+    private var isToday: Bool {
+        day == LocalDay(date: Date())
+    }
 
     var body: some View {
         VStack(spacing: 16) {
@@ -17,14 +23,14 @@ struct DailyDetailView: View {
             HStack(spacing: 10) {
                 MetricCard(
                     title: "Total Cost",
-                    value: summary?.cost.map { CurrencyFormatter.format($0, currency: "CNY") } ?? "—",
-                    subtitle: "from official export",
+                    value: headlineCost,
+                    subtitle: headlineSubtitle,
                     icon: "yensign.circle"
                 )
                 MetricCard(
                     title: "Requests",
                     value: summary?.requests.map(String.init) ?? "—",
-                    subtitle: "in this day",
+                    subtitle: isToday ? "as of last export" : "in this day",
                     icon: "arrow.left.arrow.right"
                 )
                 MetricCard(
@@ -65,20 +71,50 @@ struct DailyDetailView: View {
                     }
                     .listStyle(.inset)
                 }
-                Text("Per-key cost is derived from the official export (price x amount) and cross-checked against the billing totals.")
-                    .font(.caption2)
-                    .foregroundStyle(.tertiary)
+                if isToday {
+                    Text("Today's live total is balance-derived and cannot be split per key. The per-key breakdown above comes from the latest official export" + importStamp + ".")
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                } else {
+                    Text("Per-key cost is derived from the official export (price x amount) and cross-checked against the billing totals.")
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                }
             }
 
             Spacer()
         }
         .padding(20)
-        .frame(width: 520, height: 460)
+        .frame(width: 520, height: 480)
         .task {
             guard !loaded else { return }
             loaded = true
             summary = await state.dashboardViewModel.dayDetail(day)
         }
+    }
+
+    private var headlineCost: String {
+        if isToday, let estimate = state.dashboardViewModel.todayBalanceEstimate {
+            return CurrencyFormatter.format(estimate, currency: "CNY")
+        }
+        return summary?.cost.map { CurrencyFormatter.format($0, currency: "CNY") } ?? "—"
+    }
+
+    private var headlineSubtitle: String {
+        if isToday {
+            if state.dashboardViewModel.todayBalanceEstimate != nil {
+                return "balance-derived (live)"
+            }
+            return "official export" + importStamp
+        }
+        return "from official export"
+    }
+
+    private var importStamp: String {
+        if let imported = state.dashboardViewModel.latestImportAt {
+            return " (imported " + imported.formatted(date: .omitted, time: .shortened) + ")"
+        }
+        return ""
     }
 
     private func displayName(for usage: APIKeyUsage) -> String {

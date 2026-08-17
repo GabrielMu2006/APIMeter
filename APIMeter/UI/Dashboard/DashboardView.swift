@@ -18,13 +18,22 @@ struct DashboardView: View {
                     subtitle: balanceSubtitle,
                     icon: "yensign.circle"
                 )
-                MetricCard(
-                    title: "Today",
-                    value: todayValue,
-                    subtitle: todaySubtitle,
-                    icon: "sun.max",
-                    tint: .orange
-                )
+                Button {
+                    let now = LocalDay(date: Date())
+                    if state.dashboardViewModel.summary?.daily.contains(where: { $0.day == now }) == true {
+                        state.selectedDay = now
+                    }
+                } label: {
+                    MetricCard(
+                        title: "Today",
+                        value: todayValue,
+                        subtitle: todaySubtitle,
+                        icon: "sun.max",
+                        tint: .orange
+                    )
+                }
+                .buttonStyle(.plain)
+                .help("Open today's detail")
                 MetricCard(
                     title: "Period Cost",
                     value: periodCost,
