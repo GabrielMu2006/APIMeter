@@ -42,7 +42,10 @@ struct DeepSeekMapperTests {
         #expect(day22?.outputTokens == 3000)
         #expect(day22?.inputTokens == 3000)
         #expect(day22?.totalTokens == 6000)
-        #expect(day22?.amount == nil)  // quantities only, never money
+        // Derived per-key cost = price * amount per row (official arithmetic):
+        // 1000*0.000000025 + 2000*0.000003 + 3000*0.000006 = 0.024025
+        #expect(day22?.amount == Decimal(string: "0.024025"))
+        #expect(day22?.currency == nil)  // filled by reconciliation against the cost file
         #expect(day22?.verification == .official)
 
         let day23 = mapping.records.first { $0.day == LocalDay("2026-07-23")! }
@@ -50,6 +53,8 @@ struct DeepSeekMapperTests {
         #expect(day23?.inputTokens == 4000)
         #expect(day23?.totalTokens == 9000)
         #expect(day23?.requestCount == 3)
+        // 4000*0.000003 + 5000*0.000006 = 0.042
+        #expect(day23?.amount == Decimal(string: "0.042"))
     }
 
     @Test func extractsKeyNamesAndPriceRules() throws {
@@ -82,6 +87,42 @@ struct DeepSeekMapperTests {
         #expect(throws: ImportError.self) {
             _ = try mapper.map(rows: rows)
         }
+    }
+
+    @Test func billingRowsAreAuthoritativeForDayTotal() {
+        let day = LocalDay("2026-07-22")!
+        let records = [
+            // Billing row: cost file, no key (2.949298 for the day+model).
+            UsageRecord(day: day, model: "m", amount: Decimal(string: "2.949298"), currency: "CNY", source: .officialCSV, verification: .official),
+            // Keyed rows: derived per-key cost from the amount file.
+            UsageRecord(day: day, apiKeyFingerprint: "FP1", model: "m", requestCount: 100, totalTokens: 1000, amount: Decimal(string: "1.50"), currency: nil, source: .officialCSV, verification: .official),
+            UsageRecord(day: day, apiKeyFingerprint: "FP2", model: "m", requestCount: 45, totalTokens: 500, amount: Decimal(string: "1.449298"), currency: nil, source: .officialCSV, verification: .official),
+        ]
+        let daily = UsageAggregator.daily(from: records)
+        // Day total = billing, NOT billing + derived (no double counting).
+        #expect(daily[0].cost == Decimal(string: "2.949298"))
+        #expect(daily[0].requests == 145)
+        #expect(daily[0].tokens == 1500)
+        #expect(daily[0].verification == .official)
+        // Per-key breakdown carries the derived amounts.
+        let summary = UsageAggregator.summarize(records)
+        let fp1 = summary.byAPIKey.first { $0.fingerprint == "FP1" }
+        #expect(fp1?.cost == Decimal(string: "1.50"))
+        let fp2 = summary.byAPIKey.first { $0.fingerprint == "FP2" }
+        #expect(fp2?.cost == Decimal(string: "1.449298"))
+        // Billing rows must not appear as an "(unknown)" key.
+        #expect(summary.byAPIKey.contains { $0.fingerprint == "(unknown)" } == false)
+    }
+
+    @Test func derivedCostSumsToDayWhenNoBillingRows() {
+        let day = LocalDay("2026-07-22")!
+        let records = [
+            UsageRecord(day: day, apiKeyFingerprint: "FP1", model: "m", amount: Decimal(string: "1.20"), source: .officialCSV, verification: .official),
+            UsageRecord(day: day, apiKeyFingerprint: "FP2", model: "m", amount: Decimal(string: "0.80"), source: .officialCSV, verification: .official),
+        ]
+        let daily = UsageAggregator.daily(from: records)
+        #expect(daily[0].cost == Decimal(string: "2.00"))
+        #expect(daily[0].verification == .official)
     }
 
     @Test func mixedCostAndQuantityAggregateToOneDay() {

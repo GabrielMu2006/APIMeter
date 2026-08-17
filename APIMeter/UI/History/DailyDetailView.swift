@@ -65,7 +65,7 @@ struct DailyDetailView: View {
                     }
                     .listStyle(.inset)
                 }
-                Text("Per-key cost is not provided by the official export - it shows only when gateway estimates exist.")
+                Text("Per-key cost is derived from the official export (price x amount) and cross-checked against the billing totals.")
                     .font(.caption2)
                     .foregroundStyle(.tertiary)
             }

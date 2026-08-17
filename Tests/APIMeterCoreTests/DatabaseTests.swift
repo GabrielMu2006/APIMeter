@@ -66,6 +66,45 @@ struct DatabaseTests {
         #expect(try repo.fetchImportBatches().count == 1)
     }
 
+    @Test func reconcileDerivedCostsMatchesBilling() throws {
+        let db = try DatabaseManager.ephemeral()
+        let repo = UsageRepository(database: db)
+        let day = LocalDay("2026-07-22")!
+        // Keyed derived rows (currency nil) - as mapped from the amount file.
+        _ = try repo.upsert([
+            UsageRecord(day: day, apiKeyFingerprint: "FP1", model: "m", requestCount: 100, totalTokens: 1000, amount: Decimal(string: "1.50"), currency: nil, source: .officialCSV, verification: .official),
+            UsageRecord(day: day, apiKeyFingerprint: "FP2", model: "m", requestCount: 45, totalTokens: 500, amount: Decimal(string: "1.449298"), currency: nil, source: .officialCSV, verification: .official),
+        ])
+        // Billing row from the cost file.
+        _ = try repo.upsert([
+            UsageRecord(day: day, model: "m", amount: Decimal(string: "2.949298"), currency: "CNY", source: .officialCSV, verification: .official),
+        ])
+        let updated = try repo.reconcileDerivedCosts()
+        #expect(updated == 2)
+        let keyed = try repo.recordsInRange(from: day, to: day, fingerprints: ["FP1", "FP2"])
+        #expect(keyed.count == 2)
+        #expect(keyed.allSatisfy { $0.currency == "CNY" })
+        #expect(keyed.allSatisfy { $0.verification == .official })
+    }
+
+    @Test func reconcileDerivedCostsDowngradesOnMismatch() throws {
+        let db = try DatabaseManager.ephemeral()
+        let repo = UsageRepository(database: db)
+        let day = LocalDay("2026-07-22")!
+        _ = try repo.upsert([
+            UsageRecord(day: day, apiKeyFingerprint: "FP1", model: "m", amount: Decimal(string: "1.50"), currency: nil, source: .officialCSV, verification: .official),
+        ])
+        // Billing says something very different -> derived must not be trusted.
+        _ = try repo.upsert([
+            UsageRecord(day: day, model: "m", amount: Decimal(string: "9.99"), currency: "CNY", source: .officialCSV, verification: .official),
+        ])
+        let updated = try repo.reconcileDerivedCosts()
+        #expect(updated == 1)
+        let keyed = try repo.recordsInRange(from: day, to: day, fingerprints: ["FP1"])
+        #expect(keyed[0].verification == .estimated)
+        #expect(keyed[0].currency == nil)
+    }
+
     @Test func apiKeyFilterInDailyQuery() throws {
         let db = try DatabaseManager.ephemeral()
         let repo = UsageRepository(database: db)

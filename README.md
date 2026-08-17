@@ -15,6 +15,8 @@ Native macOS menu bar + floating dashboard for DeepSeek API usage.
   - Settings: DeepSeek key (Keychain only), key aliases, data import/clear
   - CSV import UI: file picker + drag & drop (ZIP and CSV)
   - Real data: 8 official days, 20.13 CNY, 1067 requests, 5 named keys
+  - Per-key cost DERIVED from official price x amount rows, cross-checked
+    against billing totals at import (mismatch -> estimated, never guessed)
 - [ ] Phase C - full V1 (NSPanel pin, mini mode, notifications, gateway stable)
 - [ ] Phase C+ - open source prep
 

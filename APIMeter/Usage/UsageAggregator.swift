@@ -37,20 +37,72 @@ public enum UsageAggregator {
         }
     }
 
+    /// Sums two optional metrics; nil only when both are nil.
+    private static func combine(_ a: Int64?, _ b: Int64?) -> Int64? {
+        switch (a, b) {
+        case (let x?, let y?): return x + y
+        case (let x?, nil): return x
+        case (nil, let y?): return y
+        case (nil, nil): return nil
+        }
+    }
+
+    /// Bucket roles for one day. Official exports split billing rows
+    /// (cost file: money, no key) from keyed rows (amount file: quantities +
+    /// derived per-key cost). Billing money is authoritative for the day total;
+    /// keyed derived money feeds only the per-key breakdown.
+    private enum Bucket: Hashable {
+        case officialBilling
+        case officialKeyed
+        case localGateway
+        case balanceSnapshot
+    }
+
     /// Groups records by local day, applying the official-over-estimated rule.
     public static func daily(from records: [UsageRecord]) -> [DailyUsage] {
-        var byDay: [LocalDay: [UsageSource: Accumulator]] = [:]
+        var byDay: [LocalDay: [Bucket: Accumulator]] = [:]
         for record in records {
-            byDay[record.day, default: [:]][record.source, default: Accumulator()].add(record)
+            let bucket: Bucket
+            switch record.source {
+            case .officialCSV:
+                bucket = record.apiKeyFingerprint == nil ? .officialBilling : .officialKeyed
+            case .localGateway:
+                bucket = .localGateway
+            case .balanceSnapshot:
+                bucket = .balanceSnapshot
+            }
+            byDay[record.day, default: [:]][bucket, default: Accumulator()].add(record)
         }
         return byDay.keys.sorted().map { day in
-            let perSource = byDay[day]!
-            let sources = Set(perSource.keys)
-            if let official = perSource[.officialCSV] {
-                let d = official.daily
+            let buckets = byDay[day]!
+            let sources = Set(buckets.keys.map { bucket -> UsageSource in
+                switch bucket {
+                case .officialBilling, .officialKeyed: return .officialCSV
+                case .localGateway: return .localGateway
+                case .balanceSnapshot: return .balanceSnapshot
+                }
+            })
+            if let billing = buckets[.officialBilling], billing.cost != nil || !buckets.keys.contains(.officialKeyed) {
+                // Billing rows exist: their money is the day total. Quantities
+                // come from both buckets (keyed rows in practice).
+                let keyed = buckets[.officialKeyed] ?? Accumulator()
+                let d = billing.daily
+                let q = keyed.daily
+                return DailyUsage(
+                    day: day,
+                    cost: d.cost,
+                    requests: Self.combine(d.requests, q.requests),
+                    tokens: Self.combine(d.tokens, q.tokens),
+                    verification: .official,
+                    sources: sources
+                )
+            }
+            if let keyed = buckets[.officialKeyed] {
+                // Amount-file-only days: derived per-key cost sums to the day total.
+                let d = keyed.daily
                 return DailyUsage(day: day, cost: d.cost, requests: d.requests, tokens: d.tokens, verification: .official, sources: sources)
             }
-            let estimated = perSource[.localGateway] ?? perSource[.balanceSnapshot] ?? Accumulator()
+            let estimated = buckets[.localGateway] ?? buckets[.balanceSnapshot] ?? Accumulator()
             let d = estimated.daily
             return DailyUsage(day: day, cost: d.cost, requests: d.requests, tokens: d.tokens, verification: .estimated, sources: sources)
         }
@@ -66,9 +118,11 @@ public enum UsageAggregator {
         let tokens = daily.compactMap { $0.tokens }.reduce(Int64.zero, +)
         let hasAnyTokens = daily.contains { $0.tokens != nil }
 
+        // Per-key breakdown: keyed rows only. Billing rows (nil fingerprint)
+        // carry account-level totals and would double-count if included.
         var byKey: [String: Accumulator] = [:]
         for record in records {
-            let fp = record.apiKeyFingerprint ?? "(unknown)"
+            guard let fp = record.apiKeyFingerprint else { continue }
             byKey[fp, default: Accumulator()].add(record)
         }
         let byAPIKey = byKey.keys.sorted().map { fp -> APIKeyUsage in

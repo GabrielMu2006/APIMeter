@@ -95,6 +95,10 @@ public struct DeepSeekOfficialCSVMapper: CSVMapper {
             var requests: Int64?
             var start: Date?
             var end: Date?
+            // Per-key cost derived from official price * amount rows (no guessing -
+            // both operands are official values). Cross-checked against the cost
+            // file at import time; currency filled by that reconciliation.
+            var derivedAmount: Decimal?
         }
 
         var groups: [GroupKey: Group] = [:]
@@ -145,6 +149,11 @@ public struct DeepSeekOfficialCSVMapper: CSVMapper {
                 group.requests = (group.requests ?? 0) + amount
             default:
                 throw ImportError.unsupportedSchema(details: "unknown type '" + type + "' in amount file (schema drift - refusing to guess)")
+            }
+            // Derived cost: official price * official quantity (request_count has no price).
+            if !price.isEmpty, let perToken = Decimal(string: price, locale: Locale(identifier: "en_US_POSIX")) {
+                let rowCost = perToken * Decimal(amount)
+                group.derivedAmount = (group.derivedAmount ?? 0) + rowCost
             }
             groups[groupKey] = group
 
@@ -205,7 +214,7 @@ public struct DeepSeekOfficialCSVMapper: CSVMapper {
                 inputTokens: input,
                 outputTokens: output,
                 totalTokens: total,
-                amount: nil,
+                amount: group.derivedAmount,
                 currency: nil,
                 source: .officialCSV,
                 verification: .official

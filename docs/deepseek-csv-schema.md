@@ -63,7 +63,7 @@ NOT attribute cost to individual API keys.
 | Token data | YES - cache hit / cache miss / output (no total column; total is computed as the sum) |
 | Model data | YES |
 | Amount / money | YES - cost file, per day+model, CNY |
-| Per-key cost | NOT PROVIDED by the official export (shown as unknown; gateway estimates can fill it) |
+| Per-key cost | DERIVED: price x amount summed per (day, model, key) from the amount file - cross-checked against the cost file per (day, model); mismatch downgrades to estimated |
 
 ## Mapping rules implemented in DeepSeekOfficialCSVMapper
 
@@ -87,7 +87,7 @@ NOT attribute cost to individual API keys.
 ## Consequences for the product
 
 - Historical daily cost: fully supported from official data.
-- Per-key cost breakdown: officially unavailable; the dashboard shows
-  per-key token/request volumes from CSV and per-key cost only from
-  gateway estimates.
+- Per-key cost breakdown: derived from the official amount file
+  (price x amount), verified against the cost file at import time. On
+  mismatch the derived rows are marked estimated - never fabricated.
 - Official CSV always overrides gateway estimates for a day (spec 26).

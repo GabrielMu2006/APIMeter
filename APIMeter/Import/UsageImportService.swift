@@ -107,6 +107,9 @@ public struct UsageImportService: Sendable {
         }
 
         let stats = try repository.upsert(mapping.records)
+        // Cross-check derived per-key costs against billing totals (idempotent,
+        // order-independent - safe to run after every file import).
+        let reconciled = try repository.reconcileDerivedCosts()
         // Official key names from the export become the api_keys display names.
         for (fingerprint, officialName) in mapping.keyNames {
             try repository.setOfficialName(officialName, fingerprint: fingerprint)
@@ -127,7 +130,7 @@ public struct UsageImportService: Sendable {
             importedAt: Date(),
             rowCount: rows.count - 1
         ))
-        Log.info("Import " + url.lastPathComponent + ": " + String(stats.inserted) + " inserted, " + String(stats.ignoredDuplicates) + " duplicate rows ignored, " + String(rulesSeeded) + " price rules seeded")
+        Log.info("Import " + url.lastPathComponent + ": " + String(stats.inserted) + " inserted, " + String(stats.ignoredDuplicates) + " duplicate rows ignored, " + String(rulesSeeded) + " price rules seeded, " + String(reconciled) + " cost records reconciled")
         return ImportResult(
             fileHash: fileHash,
             filesImported: 1,

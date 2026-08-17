@@ -60,6 +60,10 @@ struct DashboardView: View {
         .frame(minWidth: 760, minHeight: 540)
         .task {
             await state.refreshAll()
+            // Verification aid: auto-open the latest day's detail sheet.
+            if ProcessInfo.processInfo.environment["APIMETER_OPEN_DAY_DETAIL"] == "1" {
+                state.selectedDay = state.dashboardViewModel.summary?.daily.map { $0.day }.max()
+            }
         }
         .sheet(item: Binding(
             get: { state.selectedDay },

@@ -245,6 +245,74 @@ public struct UsageRepository: Sendable {
         }
     }
 
+    // MARK: - Derived cost reconciliation
+
+    /// Cross-checks DERIVED per-key costs (price * amount from the amount file)
+    /// against BILLING totals (cost file) per (day, model).
+    /// - exact match: currency is filled from the billing row, stays official.
+    /// - mismatch (beyond tolerance): keyed rows are downgraded to estimated
+    ///   (honest, spec 127 - accuracy over convenience).
+    /// Idempotent and order-independent: run after every import.
+    @discardableResult
+    public func reconcileDerivedCosts() throws -> Int {
+        try database.dbQueue.write { db in
+            let keyedRows = try UsageRow
+                .filter(Column("source") == UsageSource.officialCSV.rawValue)
+                .filter(Column("api_key_id") != nil)
+                .filter(Column("amount") != nil)
+                .fetchAll(db)
+            let billingRows = try UsageRow
+                .filter(Column("source") == UsageSource.officialCSV.rawValue)
+                .filter(Column("api_key_id") == nil)
+                .filter(Column("amount") != nil)
+                .fetchAll(db)
+
+            // Billing totals per (day, model): sum + currency.
+            var billing: [String: (total: Decimal, currency: String)] = [:]
+            for row in billingRows {
+                let key = row.day + "|" + (row.model ?? "")
+                let amount = row.amount.flatMap(DecimalStorage.decimal) ?? 0
+                var entry = billing[key] ?? (total: 0, currency: "")
+                entry.total += amount
+                if entry.currency.isEmpty { entry.currency = row.currency ?? "" }
+                billing[key] = entry
+            }
+
+            // Group keyed rows per (day, model).
+            var groups: [String: [UsageRow]] = [:]
+            for row in keyedRows {
+                let key = row.day + "|" + (row.model ?? "")
+                groups[key, default: []].append(row)
+            }
+
+            var updated = 0
+            for (key, rows) in groups {
+                guard let bill = billing[key] else { continue }
+                let derivedTotal = rows.reduce(Decimal.zero) { partial, row in
+                    partial + (row.amount.flatMap(DecimalStorage.decimal) ?? 0)
+                }
+                let diff = (bill.total - derivedTotal)
+                let magnitude = diff < 0 ? -diff : diff
+                let matches = magnitude < Decimal(string: "0.000001")!
+                for row in rows {
+                    var assignments: [ColumnAssignment] = []
+                    if matches {
+                        if !bill.currency.isEmpty {
+                            assignments.append(Column("currency").set(to: bill.currency))
+                        }
+                    } else {
+                        assignments.append(Column("verification_state").set(to: VerificationState.estimated.rawValue))
+                    }
+                    if !assignments.isEmpty {
+                        try UsageRow.filter(Column("id") == row.id).updateAll(db, assignments)
+                        updated += 1
+                    }
+                }
+            }
+            return updated
+        }
+    }
+
     // MARK: - Clear
 
     /// Deletes all usage rows but KEEPS import_batches metadata (spec 84),

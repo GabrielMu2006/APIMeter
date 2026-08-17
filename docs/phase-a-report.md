@@ -58,6 +58,15 @@ Environment: macOS 26.3.1 (arm64), Xcode 26.6, Swift 6.3.3, SDK macosx26.5, depl
 4. Gateway forwards via URLSession; SwiftNIO is the server (simpler, same transparency).
 5. Per-key cost from official data is impossible (export limitation) - displayed as unknown per spec 119.
 
+## Addendum (2026-08-17, post-Phase-B review)
+
+The report's earlier claim "per-key cost is officially unavailable" was
+WRONG. The amount file carries price AND quantity per row; sum(price x amount)
+per (day, model, key) reproduces the cost file exactly (verified against all
+14 groups: total 20.126657 matches to the last digit). Phase B implements:
+derived per-key cost + import-time reconciliation against billing totals +
+billing-authoritative day totals (no double counting).
+
 ## Next phase recommendation
 
 Phase A is complete: Balance PASS, Keychain PASS, CSV PASS, daily aggregation verified on real data,

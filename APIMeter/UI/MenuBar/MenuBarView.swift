@@ -169,7 +169,6 @@ struct TopKeysSection: View {
         if let key = state.dashboardViewModel.apiKeys.first(where: { $0.fingerprint == usage.fingerprint }) {
             return key.bestDisplayName
         }
-        if usage.fingerprint == "(unknown)" { return "Account-level cost" }
         return KeyFingerprint.displayPrefix(usage.fingerprint, length: 8) + "..."
     }
 }
