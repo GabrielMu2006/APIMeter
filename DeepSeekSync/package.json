@@ -1,0 +1,23 @@
+{
+  "name": "deepseek-sync",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Automated DeepSeek Usage Export downloader (Playwright + Keychain session)",
+  "type": "commonjs",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "login": "node dist/index.js login",
+    "sync": "node dist/index.js sync",
+    "status": "node dist/index.js status",
+    "dump": "node dist/index.js dump",
+    "login-debug": "node dist/index.js login --debug"
+  },
+  "dependencies": {
+    "playwright": "^1.50.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.0",
+    "@types/node": "^22.0.0"
+  }
+}

@@ -8,6 +8,32 @@
 
 ---
 
+# 0. 决策记录 (Decision Record)
+
+## DR-001 (2026-08-17)：启用 DeepSeek Export 自动同步模块
+
+**决策人**：产品所有者（用户）。
+
+**内容**：新增独立模块 DeepSeekSync，通过 Playwright 自动化浏览器自动获取
+DeepSeek 官方 Usage Export（打开 Usage 页面，点 Export，下载 ZIP/CSV），
+替代原 spec 第 3 节非目标中的「自动抓取 DeepSeek Usage 网页」与第 111 节
+中的「禁止 WKWebView 登录 / 禁止浏览器会话」条款。
+
+**仍然保留的约束**（不可突破）：
+
+- 不读取用户现有浏览器的 Cookie / Session（只使用模块自己生成的持久会话）
+- 不保存 DeepSeek 用户名与密码；会话（Cookie + LocalStorage）加密存 macOS Keychain
+- 不调用 DeepSeek 未公开的内部 API
+- 不使用 HTTPS MITM / 根证书 / API Gateway 改写
+- 低频同步（默认每天 1 次），避免触发风控
+- 导出文件只落本机，交给已有 Usage Parser 处理
+
+**理由**：DeepSeek 无官方 Usage/Billing API（已核实 api-docs.deepseek.com
+全部端点），官方 Export 是唯一合规的数据入口；自动化下载是减少人工操作的
+合理需求，由产品所有者明确决策。
+
+---
+
 # 1. 项目概述
 
 ## 1.1 项目目标
@@ -2797,6 +2823,12 @@ Enable Launch at Login?
 ---
 
 # 111. 不做网页抓取
+
+注意：本节已被 DR-001（见文档顶部）部分修订 —— 官方 Usage Export 的自动化
+下载（Playwright 模块 DeepSeekSync）已获产品所有者批准。其余禁止项（读取现有
+浏览器 Cookie、调用隐藏接口、HTTPS MITM 等）仍有效。
+
+原条款如下（历史记录）：
 
 这是固定技术决策。
 

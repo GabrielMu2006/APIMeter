@@ -1,0 +1,11 @@
+#!/bin/sh
+# Launcher for the DeepSeekSync CLI. Uses the bundled portable Node runtime
+# (DeepSeekSync/runtime) so no system Node installation is required.
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+NODE_BIN="$SCRIPT_DIR/runtime/node-v24.19.0-darwin-arm64/bin/node"
+if [ ! -x "$NODE_BIN" ]; then
+  echo "error: bundled Node runtime missing (expected $NODE_BIN)" >&2
+  echo "run: scripts/setup-runtime.sh" >&2
+  exit 1
+fi
+exec "$NODE_BIN" "$SCRIPT_DIR/dist/index.js" "$@"
