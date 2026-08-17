@@ -96,6 +96,39 @@ public struct UsageRepository: Sendable {
         return db.changesCount > 0
     }
 
+    /// REPLACE semantics for official imports: DeepSeek day buckets are
+    /// cumulative snapshots - a newer export supersedes earlier totals for
+    /// the same (day, model, api key). Old official rows for each incoming
+    /// group are deleted first, so re-imports never accumulate.
+    public func replaceOfficialRecords(_ records: [UsageRecord]) throws -> UsageUpsertStats {
+        try database.dbQueue.write { db in
+            var inserted = 0
+            var ignored = 0
+            var handledKeys = Set<String>()
+            for record in records {
+                let fingerprintKey = record.apiKeyFingerprint ?? ""
+                let groupKey = record.day.value + "|" + (record.model ?? "") + "|" + fingerprintKey
+                if !handledKeys.contains(groupKey) {
+                    handledKeys.insert(groupKey)
+                    if record.apiKeyFingerprint == nil {
+                        try db.execute(sql: """
+                            DELETE FROM usage_records
+                            WHERE source = ? AND day = ? AND model IS ? AND api_key_id IS NULL
+                            """, arguments: [UsageSource.officialCSV.rawValue, record.day.value, record.model])
+                    } else {
+                        try db.execute(sql: """
+                            DELETE FROM usage_records
+                            WHERE source = ? AND day = ? AND model IS ?
+                              AND api_key_id IN (SELECT id FROM api_keys WHERE fingerprint = ?)
+                            """, arguments: [UsageSource.officialCSV.rawValue, record.day.value, record.model, record.apiKeyFingerprint!])
+                    }
+                }
+                if try Self.insert(record, in: db) { inserted += 1 } else { ignored += 1 }
+            }
+            return UsageUpsertStats(inserted: inserted, ignoredDuplicates: ignored)
+        }
+    }
+
     // MARK: - Queries
 
     /// Daily aggregation for [start, end], optionally filtered to API key fingerprints.
@@ -182,6 +215,16 @@ public struct UsageRepository: Sendable {
     public func importBatchExists(fileHash: String) throws -> Bool {
         try database.dbQueue.read { db in
             try ImportBatchRow.filter(Column("file_hash") == fileHash).isEmpty(db) == false
+        }
+    }
+
+    /// Deletes all import metadata (used by the rebuild path so the same
+    /// export file can be re-imported after usage rows were cleared).
+    @discardableResult
+    public func clearImportBatches() throws -> Int {
+        try database.dbQueue.write { db in
+            try db.execute(sql: "DELETE FROM import_batches")
+            return db.changesCount
         }
     }
 

@@ -106,7 +106,9 @@ public struct UsageImportService: Sendable {
             throw ImportError.unsupportedSchema(details: "Mapper '" + mapper.schemaID + "' produced no records")
         }
 
-        let stats = try repository.upsert(mapping.records)
+        // Replace semantics: newer exports supersede earlier totals for the
+        // same day buckets (cumulative snapshots - never accumulate).
+        let stats = try repository.replaceOfficialRecords(mapping.records)
         // Cross-check derived per-key costs against billing totals (idempotent,
         // order-independent - safe to run after every file import).
         let reconciled = try repository.reconcileDerivedCosts()

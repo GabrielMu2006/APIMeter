@@ -47,7 +47,7 @@ struct UsageChart: View {
             }
             .chartYAxisLabel("Cost")
             .chartXAxis {
-                AxisMarks(values: .stride(by: .day, count: axisStride)) { _ in
+                AxisMarks(values: axisMarkDates) { _ in
                     AxisGridLine().foregroundStyle(Color.secondary.opacity(0.25))
                     AxisValueLabel(format: .dateTime.month(.defaultDigits).day(.defaultDigits))
                         .foregroundStyle(.secondary)
@@ -103,15 +103,19 @@ struct UsageChart: View {
         )
     }
 
-    /// Stride based on the TIME SPAN (the axis is continuous across all days,
-    /// not only days with data) - keeps labels sparse like the web page.
-    private var axisStride: Int {
-        guard let first = entries.first?.date, let last = entries.last?.date else { return 1 }
-        let spanDays = Calendar.current.dateComponents([.day], from: first, to: last).day ?? 0
-        if spanDays > 60 { return 14 }
-        if spanDays > 21 { return 7 }
-        if spanDays > 10 { return 3 }
-        return 1
+    /// Labels sit exactly UNDER bars: stride over DATA POINTS (not empty
+    /// calendar days), at most 5 labels. No label ever floats in empty space.
+    private var axisMarkDates: [Date] {
+        let count = entries.count
+        guard count > 0 else { return [] }
+        let stride = max(1, Int(ceil(Double(count) / 5.0)))
+        var dates: [Date] = []
+        for (index, entry) in entries.enumerated() {
+            if index % stride == 0 || index == count - 1 {
+                dates.append(entry.date)
+            }
+        }
+        return dates
     }
 
     private func nearestEntry(to date: Date) -> Entry? {

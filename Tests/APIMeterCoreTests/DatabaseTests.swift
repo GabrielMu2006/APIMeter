@@ -112,6 +112,27 @@ struct DatabaseTests {
         #expect(estimate == nil)
     }
 
+    @Test func replaceSemanticsPreventBucketAccumulation() throws {
+        let db = try DatabaseManager.ephemeral()
+        let repo = UsageRepository(database: db)
+        let day = LocalDay("2026-08-17")!
+        // First export: 8/17 bucket = 6.03 (partial day).
+        _ = try repo.replaceOfficialRecords([
+            UsageRecord(day: day, model: "deepseek-v4-pro", amount: Decimal(string: "6.0331458"), currency: "CNY", source: .officialCSV, verification: .official),
+            UsageRecord(day: day, apiKeyFingerprint: "FP1", model: "deepseek-v4-pro", requestCount: 124, totalTokens: 22_877_982, amount: Decimal(string: "6.00"), source: .officialCSV, verification: .official),
+        ])
+        // Later export: same buckets, updated totals (cumulative snapshot).
+        _ = try repo.replaceOfficialRecords([
+            UsageRecord(day: day, model: "deepseek-v4-pro", amount: Decimal(string: "56.63"), currency: "CNY", source: .officialCSV, verification: .official),
+            UsageRecord(day: day, apiKeyFingerprint: "FP1", model: "deepseek-v4-pro", requestCount: 528, totalTokens: 141_000_000, amount: Decimal(string: "56.00"), source: .officialCSV, verification: .official),
+        ])
+        let daily = try repo.dailyUsage(from: day, to: day)
+        // New totals only - no accumulation (56.63, NOT 62.66).
+        #expect(daily[0].cost == Decimal(string: "56.63"))
+        #expect(daily[0].requests == 528)
+        #expect(try repo.recordCount() == 2)
+    }
+
     @Test func reconcileDerivedCostsMatchesBilling() throws {
         let db = try DatabaseManager.ephemeral()
         let repo = UsageRepository(database: db)

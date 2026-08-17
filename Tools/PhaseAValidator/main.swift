@@ -28,6 +28,7 @@ struct PhaseAValidator {
             case "analyze": try analyzeCommand(Array(args.dropFirst()))
             case "import": try await importCommand(Array(args.dropFirst()))
             case "daily": try dailyCommand(Array(args.dropFirst()))
+            case "rebuild": try await rebuildCommand(Array(args.dropFirst()))
             case "selfcheck": try await selfCheck()
             default:
                 usage()
@@ -293,6 +294,27 @@ struct PhaseAValidator {
             let cost = key.cost.map { CurrencyFormatter.format($0, currency: "CNY") } ?? "-"
             print("  " + KeyFingerprint.displayPrefix(key.fingerprint, length: 8) + "... | " + cost + " | req " + (key.requests.map(String.init) ?? "-") + " | tok " + (key.tokens.map(TokenFormatter.compact) ?? "-"))
         }
+    }
+
+    // MARK: - rebuild
+
+    /// Clears usage rows + import metadata (keeps balance snapshots for the
+    /// Today baseline), then re-imports the given export with replace semantics.
+    static func rebuildCommand(_ args: [String]) async throws {
+        guard let path = args.first else {
+            print("rebuild PATH")
+            exit(1)
+        }
+        let db = try DatabaseManager(path: DatabaseManager.defaultLocation().path)
+        let repository = UsageRepository(database: db)
+        let deleted = try repository.clearUsageRecords()
+        let batches = try repository.clearImportBatches()
+        let service = UsageImportService(repository: repository)
+        let result = try await service.importFile(at: URL(fileURLWithPath: path), mapper: DeepSeekOfficialCSVMapper())
+        print("REBUILD OK")
+        print("  cleared usage rows: " + String(deleted) + " (import batches: " + String(batches) + ")")
+        print("  re-imported: " + String(result.inserted) + " records, " + String(result.ignoredDuplicates) + " duplicates ignored")
+        print("  balance snapshots preserved (Today baseline intact)")
     }
 
     // MARK: - selfcheck
