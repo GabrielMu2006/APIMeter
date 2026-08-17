@@ -1,10 +1,10 @@
 import * as fs from "node:fs";
-import { BASE_DIR } from "./config";
+import { BASE_DIR, PROFILE_DIR } from "./config";
 import { launchPersistent } from "./browser";
 import { loginAndSaveSession } from "./authenticator";
 import { exportUsage, SessionExpiredError } from "./usageExporter";
 import { saveDownload } from "./downloadManager";
-import { loadSession, deleteSession } from "./sessionStore";
+import { loadSession, saveSession, deleteSession } from "./sessionStore";
 import { loadState, saveState } from "./syncState";
 
 async function main(): Promise<void> {
@@ -14,7 +14,10 @@ async function main(): Promise<void> {
     switch (command) {
       case "login": {
         deleteSession();
-        const context = await launchPersistent(true);
+        // The browser profile is scratch space; Keychain holds the only
+        // session copy. A fresh profile avoids cross-mode artifacts.
+        fs.rmSync(PROFILE_DIR, { recursive: true, force: true });
+        const context = await launchPersistent("headed");
         try {
           await loginAndSaveSession(context);
         } finally {
@@ -28,10 +31,11 @@ async function main(): Promise<void> {
           console.error("No session found. Run: ./deepseek-sync login");
           process.exit(2);
         }
-        const context = await launchPersistent(false);
+        const storageState = JSON.parse(session);
+        const context = await launchPersistent("hidden", storageState);
         try {
           const page = await context.newPage();
-          const download = await exportUsage(page);
+          const download = await exportUsage(context, page);
           const result = await saveDownload(download);
           console.log("SYNC OK");
           console.log("  file: " + result.fileName);
@@ -43,6 +47,10 @@ async function main(): Promise<void> {
             lastFileHash: result.sha256,
             lastFilePath: result.path,
           });
+          // Cookies may rotate - refresh the saved session for next time.
+          const fresh = await context.storageState();
+          saveSession(JSON.stringify(fresh));
+          console.log("  session refreshed");
         } finally {
           await context.close();
         }
@@ -62,7 +70,9 @@ async function main(): Promise<void> {
         break;
       }
       case "dump": {
-        const context = await launchPersistent(process.argv.includes("--headed"));
+        const session = loadSession();
+        const storageState = session ? JSON.parse(session) : undefined;
+        const context = await launchPersistent(process.argv.includes("--headed") ? "headed" : "hidden", storageState);
         try {
           const page = await context.newPage();
           await page.goto("https://platform.deepseek.com/usage", { waitUntil: "domcontentloaded" });

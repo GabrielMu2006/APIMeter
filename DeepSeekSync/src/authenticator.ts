@@ -26,7 +26,17 @@ export async function loginAndSaveSession(context: BrowserContext): Promise<void
     }
     const onUsage = url.startsWith("https://platform.deepseek.com/usage")
       || url.includes("/usage");
+    // Extra confirmation: the usage page carries recognizable content.
+    let hasMarker = false;
     if (onUsage) {
+      try {
+        const body = await page.locator("body").innerText({ timeout: 4000 });
+        hasMarker = /[消费金额用量信息请求次数Usage]/.test(body);
+      } catch {
+        hasMarker = false;
+      }
+    }
+    if (onUsage && hasMarker) {
       console.log("[login] signed in - saving session to Keychain");
       const storage = await context.storageState();
       saveSession(JSON.stringify(storage));
