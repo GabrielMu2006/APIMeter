@@ -37,6 +37,24 @@ public enum UsageAggregator {
         }
     }
 
+    /// Per-day per-key costs from keyed records that carry an amount,
+    /// sorted by cost descending. Billing rows (nil fingerprint) are excluded.
+    /// Powers the chart hover tooltip (web-style per-key breakdown).
+    public static func perKeyDailyCosts(_ records: [UsageRecord]) -> [LocalDay: [(fingerprint: String, cost: Decimal)]] {
+        var byDay: [LocalDay: [String: Decimal]] = [:]
+        for record in records {
+            guard let fingerprint = record.apiKeyFingerprint, let amount = record.amount else { continue }
+            byDay[record.day, default: [:]][fingerprint, default: 0] += amount
+        }
+        var result: [LocalDay: [(fingerprint: String, cost: Decimal)]] = [:]
+        for (day, dict) in byDay {
+            result[day] = dict
+                .map { (fingerprint: $0.key, cost: $0.value) }
+                .sorted { $0.cost > $1.cost }
+        }
+        return result
+    }
+
     /// Sums two optional metrics; nil only when both are nil.
     private static func combine(_ a: Int64?, _ b: Int64?) -> Int64? {
         switch (a, b) {

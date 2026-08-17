@@ -51,6 +51,28 @@ struct AggregationTests {
         #expect(daily[0].requests == 5)
     }
 
+    @Test func perKeyDailyCostsGroupsAndSorts() {
+        let d1 = LocalDay("2026-08-16")!
+        let d2 = LocalDay("2026-08-17")!
+        let records = [
+            UsageRecord(day: d1, apiKeyFingerprint: "FP-A", amount: Decimal(string: "1.00"), source: .officialCSV, verification: .official),
+            UsageRecord(day: d1, apiKeyFingerprint: "FP-B", amount: Decimal(string: "2.50"), source: .officialCSV, verification: .official),
+            UsageRecord(day: d1, apiKeyFingerprint: "FP-B", amount: Decimal(string: "0.50"), source: .officialCSV, verification: .official),
+            UsageRecord(day: d2, apiKeyFingerprint: "FP-A", amount: Decimal(string: "4.00"), source: .officialCSV, verification: .official),
+            // billing row must be excluded
+            UsageRecord(day: d2, amount: Decimal(string: "99.00"), currency: "CNY", source: .officialCSV, verification: .official),
+            // rows without amount are skipped
+            UsageRecord(day: d2, apiKeyFingerprint: "FP-C", requestCount: 5, source: .officialCSV, verification: .official),
+        ]
+        let grouped = UsageAggregator.perKeyDailyCosts(records)
+        #expect(grouped[d1]?.count == 2)
+        #expect(grouped[d1]?.first?.fingerprint == "FP-B")
+        #expect(grouped[d1]?.first?.cost == Decimal(string: "3.00"))
+        #expect(grouped[d1]?.last?.fingerprint == "FP-A")
+        #expect(grouped[d2]?.count == 1)
+        #expect(grouped[d2]?.first?.cost == Decimal(string: "4.00"))
+    }
+
     @Test func daysSortChronologically() {
         let d1 = LocalDay("2026-08-16")!
         let d2 = LocalDay("2026-08-17")!

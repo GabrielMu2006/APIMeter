@@ -2,10 +2,11 @@ import Charts
 import SwiftUI
 
 /// Daily cost trend styled after the DeepSeek web usage page (spec 40):
-/// blue rounded bars, clean date axis, hover tooltip with the day's
-/// cost / requests / tokens.
+/// blue rounded bars, sparse date axis, hover tooltip with the day's
+/// cost / requests / tokens and the per-key cost breakdown.
 struct UsageChart: View {
     let daily: [DailyUsage]
+    let perKeyCosts: [LocalDay: [(name: String, cost: Decimal)]]
     @State private var hoveredDay: LocalDay?
 
     private struct Entry: Identifiable {
@@ -78,8 +79,8 @@ struct UsageChart: View {
                        let entry = entries.first(where: { $0.id == hoveredDay }),
                        let positionX = proxy.position(forX: entry.date) {
                         tooltip(for: entry)
-                            .frame(width: 170)
-                            .offset(x: min(max(positionX - 85, 4), geometry.size.width - 178), y: 6)
+                            .frame(width: 180)
+                            .offset(x: min(max(positionX - 90, 4), geometry.size.width - 188), y: 6)
                     }
                 }
             }
@@ -119,15 +120,37 @@ struct UsageChart: View {
 
     @ViewBuilder
     private func tooltip(for entry: Entry) -> some View {
-        VStack(alignment: .leading, spacing: 3) {
+        let keys = perKeyCosts[entry.id] ?? []
+        let costText = CurrencyFormatter.format(Decimal(entry.cost), currency: "CNY")
+        let requestsText = entry.requests.map(String.init) ?? "?"
+        let tokensText = entry.tokens.map(TokenFormatter.compact) ?? "?"
+        let visibleKeys = Array(keys.prefix(5))
+        VStack(alignment: .leading, spacing: 4) {
             Text(entry.id.value)
                 .font(.caption.weight(.semibold))
-            Text("Cost  " + CurrencyFormatter.format(Decimal(entry.cost), currency: "CNY"))
+            Text("Cost  " + costText)
                 .font(.caption)
-            Text("Requests  " + (entry.requests.map(String.init) ?? "—"))
+            Text("Requests  " + requestsText + "  Tokens  " + tokensText)
                 .font(.caption)
-            Text("Tokens  " + (entry.tokens.map(TokenFormatter.compact) ?? "—"))
-                .font(.caption)
+                .foregroundStyle(.secondary)
+            if !visibleKeys.isEmpty {
+                Divider()
+                ForEach(visibleKeys, id: \.name) { key in
+                    HStack {
+                        Text(key.name)
+                            .lineLimit(1)
+                        Spacer()
+                        Text(CurrencyFormatter.format(key.cost, currency: "CNY"))
+                            .monospacedDigit()
+                    }
+                    .font(.caption)
+                }
+                if keys.count > 5 {
+                    Text("+" + String(keys.count - 5) + " more keys")
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                }
+            }
         }
         .padding(8)
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8))

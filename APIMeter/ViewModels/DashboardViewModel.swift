@@ -20,6 +20,8 @@ public final class DashboardViewModel {
     public private(set) var summary: UsageSummary?
     public private(set) var today: DailyUsage?
     public private(set) var todayBalanceEstimate: Decimal?
+    public private(set) var perKeyCostsByDay: [LocalDay: [(fingerprint: String, cost: Decimal)]] = [:]
+    public private(set) var latestImportAt: Date?
     public private(set) var apiKeys: [APIKey] = []
     public private(set) var isLoading = false
     public private(set) var lastReload: Date?
@@ -54,6 +56,9 @@ public final class DashboardViewModel {
         apiKeys = (try? environment.repository.fetchAPIKeys()) ?? []
         let (start, end) = range
         let filter = selectedFingerprints.isEmpty ? nil : selectedFingerprints
+        let rangeRecords = (try? environment.repository.recordsInRange(from: start, to: end, fingerprints: filter)) ?? []
+        perKeyCostsByDay = UsageAggregator.perKeyDailyCosts(rangeRecords)
+        latestImportAt = (try? environment.repository.fetchImportBatches())?.first?.importedAt
         summary = try? environment.repository.summary(from: start, to: end, fingerprints: filter)
         if let summary {
             Log.info("Dashboard loaded: range=" + start.value + ".." + end.value + " days=" + String(summary.daily.count) + " cost=" + (summary.cost.map(DecimalStorage.string) ?? "nil") + " keys=" + String(summary.byAPIKey.count))

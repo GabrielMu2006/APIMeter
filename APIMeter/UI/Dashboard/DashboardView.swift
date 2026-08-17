@@ -53,8 +53,18 @@ struct DashboardView: View {
                 APIKeyFilter(viewModel: state.dashboardViewModel)
             }
 
-            UsageChart(daily: state.dashboardViewModel.summary?.daily ?? [])
-                .frame(height: 150)
+            UsageChart(
+                daily: state.dashboardViewModel.summary?.daily ?? [],
+                perKeyCosts: state.dashboardViewModel.perKeyCostsByDay.mapValues { entries in
+                    entries.map { entry in
+                        let name = state.dashboardViewModel.apiKeys
+                            .first { $0.fingerprint == entry.fingerprint }?
+                            .bestDisplayName ?? KeyFingerprint.displayPrefix(entry.fingerprint, length: 8)
+                        return (name: name, cost: entry.cost)
+                    }
+                }
+            )
+            .frame(height: 150)
 
             HStack(alignment: .top, spacing: 12) {
                 DailyUsageList(daily: state.dashboardViewModel.summary?.daily ?? []) { day in
@@ -156,7 +166,11 @@ struct DashboardView: View {
     private var todaySubtitle: String {
         var parts: [String] = []
         if let today = state.dashboardViewModel.today {
-            parts.append(today.verification == .official ? "Official export" : "Estimate")
+            var source = today.verification == .official ? "Official export" : "Estimate"
+            if let imported = state.dashboardViewModel.latestImportAt {
+                source += " · imported " + imported.formatted(date: .omitted, time: .shortened)
+            }
+            parts.append(source)
             if let requests = today.requests { parts.append(String(requests) + " requests") }
             if let tokens = today.tokens { parts.append(TokenFormatter.compact(tokens) + " tokens") }
         } else if state.dashboardViewModel.todayBalanceEstimate != nil {
