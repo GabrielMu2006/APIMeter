@@ -67,12 +67,17 @@ struct UsageChart: View {
                         .gesture(
                             DragGesture(minimumDistance: 0)
                                 .onChanged { value in
-                                    // Pixel proximity: the bar under the cursor
-                                    // wins (time-distance matching snapped to
-                                    // neighboring bars on small columns).
+                                    // Coordinate spaces: proxy.position(forX:)
+                                    // returns PLOT-local x, while the gesture
+                                    // location is in the full chart frame
+                                    // (plot + axis margins). Without adding
+                                    // plotFrame.minX, hovering a bar would
+                                    // match the NEXT bar to its right.
+                                    let plotMinX = (proxy.plotFrame.flatMap { geometry[$0] })?.minX ?? 0
+                                    let cursorX = value.location.x
                                     let best = entries.min { a, b in
-                                        let da = abs((proxy.position(forX: a.date) ?? 0) - value.location.x)
-                                        let db = abs((proxy.position(forX: b.date) ?? 0) - value.location.x)
+                                        let da = abs((proxy.position(forX: a.date) ?? 0) + plotMinX - cursorX)
+                                        let db = abs((proxy.position(forX: b.date) ?? 0) + plotMinX - cursorX)
                                         return da < db
                                     }
                                     hoveredDay = best?.id
@@ -82,9 +87,11 @@ struct UsageChart: View {
                     if let hoveredDay,
                        let entry = entries.first(where: { $0.id == hoveredDay }),
                        let positionX = proxy.position(forX: entry.date) {
+                        // Tooltip in the overlay's (full-frame) space.
+                        let frameX = positionX + ((proxy.plotFrame.flatMap { geometry[$0] })?.minX ?? 0)
                         tooltip(for: entry)
                             .frame(width: 180)
-                            .offset(x: min(max(positionX - 90, 4), geometry.size.width - 188), y: 6)
+                            .offset(x: min(max(frameX - 90, 4), geometry.size.width - 188), y: 6)
                     }
                 }
             }
