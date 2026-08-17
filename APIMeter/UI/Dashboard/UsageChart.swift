@@ -67,31 +67,37 @@ struct UsageChart: View {
                         .gesture(
                             DragGesture(minimumDistance: 0)
                                 .onChanged { value in
-                                    // Coordinate spaces: proxy.position(forX:)
-                                    // returns PLOT-local x, while the gesture
-                                    // location is in the full chart frame
-                                    // (plot + axis margins). Without adding
-                                    // plotFrame.minX, hovering a bar would
-                                    // match the NEXT bar to its right.
+                                    // Band-based matching: each entry owns the
+                                    // pixel interval [date, date+1day). The
+                                    // cursor's band wins - independent of how
+                                    // Swift Charts centers the drawn bar.
                                     let plotMinX = (proxy.plotFrame.flatMap { geometry[$0] })?.minX ?? 0
                                     let cursorX = value.location.x
-                                    let best = entries.min { a, b in
-                                        let da = abs((proxy.position(forX: a.date) ?? 0) + plotMinX - cursorX)
-                                        let db = abs((proxy.position(forX: b.date) ?? 0) + plotMinX - cursorX)
-                                        return da < db
+                                    var matched: Entry?
+                                    for entry in entries {
+                                        guard let startX = proxy.position(forX: entry.date) else { continue }
+                                        let bandStart = startX + plotMinX
+                                        let bandEnd = (proxy.position(forX: entry.date.addingTimeInterval(86_400)) ?? startX) + plotMinX
+                                        if cursorX >= bandStart && cursorX < bandEnd {
+                                            matched = entry
+                                            break
+                                        }
                                     }
-                                    hoveredDay = best?.id
+                                    hoveredDay = matched?.id
                                 }
                                 .onEnded { _ in hoveredDay = nil }
                         )
                     if let hoveredDay,
                        let entry = entries.first(where: { $0.id == hoveredDay }),
-                       let positionX = proxy.position(forX: entry.date) {
-                        // Tooltip in the overlay's (full-frame) space.
-                        let frameX = positionX + ((proxy.plotFrame.flatMap { geometry[$0] })?.minX ?? 0)
+                       let startX = proxy.position(forX: entry.date) {
+                        // Center the tooltip over the entry's day band.
+                        let plotMinX = ((proxy.plotFrame.flatMap { geometry[$0] })?.minX ?? 0)
+                        let bandStart = startX + plotMinX
+                        let bandEnd = (proxy.position(forX: entry.date.addingTimeInterval(86_400)) ?? startX) + plotMinX
+                        let centerX = (bandStart + bandEnd) / 2
                         tooltip(for: entry)
                             .frame(width: 180)
-                            .offset(x: min(max(frameX - 90, 4), geometry.size.width - 188), y: 6)
+                            .offset(x: min(max(centerX - 90, 4), geometry.size.width - 188), y: 6)
                     }
                 }
             }
