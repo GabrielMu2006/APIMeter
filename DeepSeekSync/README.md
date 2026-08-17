@@ -2,6 +2,9 @@
 
 Automated DeepSeek Usage Export downloader (standalone CLI).
 
+Status: VERIFIED end-to-end (2026-08-17) - login, hidden-mode sync,
+download, and the API Meter import pipeline (incremental + dedup) all pass.
+
 - Playwright + persistent Chromium profile (module-owned, never touches your browsers)
 - Session (cookies + localStorage) stored encrypted in the macOS Keychain via the system `security` tool
 - Never stores your DeepSeek username or password
