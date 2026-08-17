@@ -117,17 +117,45 @@ If the system prompt was dismissed: System Settings -> Notifications -> API Mete
 
 - **Official export is authoritative for completed days.** Its day buckets are
   cumulative snapshots, so imports use replace semantics per (day, model, api key).
-- **Today's cost is balance-derived**: the last balance snapshot before midnight
-  is the baseline; today's snapshots are walked and only DECREASES are summed
-  (increases = top-ups, ignored). If no usable baseline exists (app was not
-  running, or the baseline is older than 24 h), the card falls back to the
-  latest official export value and says so.
 - **Per-key cost** is derived from the export's own `price x amount` rows and
   cross-checked against the billing totals at import; on mismatch the rows are
   marked estimated instead of official.
 - **Money is Decimal, tokens are Int64, timestamps UTC.** Day buckets are
   computed once at import in the local timezone; changing timezones cannot
   corrupt history.
+
+### How Today's cost is calculated (balance-delta method)
+
+Today's cost is an ESTIMATE computed from balance snapshots - the balance API
+has no per-key or per-period data, so this is the only live signal available:
+
+1. **Baseline**: the last balance snapshot BEFORE local midnight (captured
+   automatically - the app stores a snapshot on every balance refresh).
+2. Every snapshot taken today is compared with the previous one:
+   - balance went DOWN -> the difference counts as spending
+   - balance went UP -> treated as a top-up (or grant) and ignored
+3. The sum of all decreases = Today's cost. It updates on every balance
+   refresh: every 60 s while a panel/dashboard is visible, every 15 min in
+   the background.
+
+Fallbacks (shown with an explicit label on the Today card):
+
+- **No midnight baseline yet** (e.g. first day after install, or the Mac was
+  off over midnight): the estimate starts from the FIRST snapshot of today
+  and is labeled "since HH:mm". It under-counts whatever was spent before
+  that first snapshot.
+- **A baseline older than 24 h is rejected** (it would mix multiple days).
+- **No snapshots at all**: the card falls back to the latest official export
+  value, stamped with its import time.
+
+### Important: do not top up while actively using the API
+
+Top-ups HIDE spending in this method: the balance jumps up, and any spending
+that happens inside the same snapshot window (before the next refresh) is
+absorbed by the jump - the drop never appears, so the day's estimate
+under-counts. **Top up when the API is idle instead.** Whatever the estimate
+says, the official export (auto-synced daily at 00:30) corrects the record
+for completed days.
 
 ## DeepSeekSync (optional auto-export)
 
