@@ -85,7 +85,8 @@ struct DatabaseTests {
         try snapshot(repo, total: Decimal(string: "44.50")!, at: todayStart.addingTimeInterval(7200))    // topup +20 (ignored)
         try snapshot(repo, total: Decimal(string: "40.00")!, at: todayStart.addingTimeInterval(10800))   // spent 4.50
         let estimate = try repo.estimatedTodaySpend(now: todayStart.addingTimeInterval(14400))
-        #expect(estimate == Decimal(string: "10.00"))
+        #expect(estimate?.amount == Decimal(string: "10.00"))
+        #expect(estimate?.topupDetected == true)  // the +20 top-up was seen
     }
 
     @Test func partialEstimateWalksFromFirstSnapshotToday() throws {
@@ -100,9 +101,10 @@ struct DatabaseTests {
         try snapshot(repo, total: Decimal(string: "90.00")!, at: todayStart.addingTimeInterval(12 * 3600)) // topup
         try snapshot(repo, total: Decimal(string: "81.00")!, at: todayStart.addingTimeInterval(13 * 3600))
         let partial = try repo.estimatedTodaySpendSinceFirstSnapshot(now: todayStart.addingTimeInterval(14 * 3600))
-        // 8 + 9 = 17 (topup ignored)
+        // 8 + 9 = 17 (topup ignored, but flagged)
         #expect(partial?.amount == Decimal(string: "17.00"))
         #expect(partial?.since == todayStart.addingTimeInterval(10 * 3600))
+        #expect(partial?.topupDetected == true)
         // Full estimate still nil (no pre-midnight baseline).
         #expect(try repo.estimatedTodaySpend(now: todayStart.addingTimeInterval(14 * 3600)) == nil)
     }

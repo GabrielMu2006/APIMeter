@@ -19,8 +19,11 @@ public final class DashboardViewModel {
     public var selectedFingerprints: Set<String> = []
     public private(set) var summary: UsageSummary?
     public private(set) var today: DailyUsage?
-    public private(set) var todayBalanceEstimate: Decimal?
+    public private(set) var todayBalanceEstimate: TodayBalanceEstimate?
     public private(set) var todayPartialEstimate: PartialTodayEstimate?
+    /// Daily list INCLUDING a synthesized Today row (balance estimate) so
+    /// the current day is visible before the official export covers it.
+    public private(set) var dailyList: [DailyUsage] = []
     public private(set) var perKeyCostsByDay: [LocalDay: [(fingerprint: String, cost: Decimal)]] = [:]
     public private(set) var latestImportAt: Date?
     public private(set) var apiKeys: [APIKey] = []
@@ -54,18 +57,21 @@ public final class DashboardViewModel {
     /// The cost shown on the Today card everywhere (menu bar, dashboard, mini):
     /// full balance-delta -> partial (since first snapshot) -> official fallback.
     public var todayDisplayCost: Decimal? {
-        if let estimate = todayBalanceEstimate { return estimate }
+        if let estimate = todayBalanceEstimate { return estimate.amount }
         if let partial = todayPartialEstimate { return partial.amount }
         return today?.cost
     }
 
     /// Human-readable source label for the Today card.
     public var todayDisplaySubtitle: String {
-        if todayBalanceEstimate != nil {
-            return "Balance-derived"
+        if let estimate = todayBalanceEstimate {
+            return estimate.topupDetected
+                ? "Balance-derived · top-up masked some spending"
+                : "Balance-derived"
         }
         if let partial = todayPartialEstimate {
-            return "Balance-derived since " + partial.since.formatted(date: .omitted, time: .shortened) + " (no midnight baseline yet)"
+            let base = "Balance-derived since " + partial.since.formatted(date: .omitted, time: .shortened) + " (no midnight baseline yet)"
+            return partial.topupDetected ? base + " · top-up masked some spending" : base
         }
         if today != nil {
             return "Official export"
@@ -94,7 +100,35 @@ public final class DashboardViewModel {
         today = (try? environment.repository.summary(from: now, to: now, fingerprints: nil))?.daily.first
         todayBalanceEstimate = try? environment.repository.estimatedTodaySpend()
         todayPartialEstimate = try? environment.repository.estimatedTodaySpendSinceFirstSnapshot()
+        let officialDaily = summary?.daily ?? []
+        let todayDay = LocalDay(date: Date())
+        dailyList = Self.buildDailyList(
+            official: officialDaily,
+            todayRow: Self.synthesizeTodayRow(
+                displayCost: todayDisplayCost,
+                officialToday: officialDaily.first { $0.day == todayDay },
+                day: todayDay
+            )
+        )
         lastReload = Date()
+    }
+
+    /// Builds the displayed daily list: official rows plus a synthesized
+    /// Today row carrying the balance-derived estimate (verification =
+    /// estimated unless official data covers today).
+    private static func buildDailyList(official: [DailyUsage], todayRow: DailyUsage?) -> [DailyUsage] {
+        var rows = official.filter { $0.day != todayRow?.day }
+        if let todayRow { rows.append(todayRow) }
+        return rows.sorted { $0.day > $1.day }
+    }
+
+    private static func synthesizeTodayRow(displayCost: Decimal?, officialToday: DailyUsage?, day: LocalDay) -> DailyUsage? {
+        guard let cost = displayCost else { return officialToday }
+        let requests = officialToday?.requests
+        let tokens = officialToday?.tokens
+        let verification: VerificationState = officialToday?.verification ?? .estimated
+        let sources = officialToday?.sources ?? [.balanceSnapshot]
+        return DailyUsage(day: day, cost: cost, requests: requests, tokens: tokens, verification: verification, sources: sources)
     }
 
     public func dayDetail(_ day: LocalDay) async -> UsageSummary? {

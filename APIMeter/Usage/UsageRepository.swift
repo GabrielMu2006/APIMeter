@@ -295,7 +295,7 @@ public struct UsageRepository: Sendable {
     /// only DECREASES; increases are treated as top-ups and ignored.
     /// Returns nil when there is no pre-today snapshot to anchor against.
     /// This is an ESTIMATE - official export data overrides it when present.
-    public func estimatedTodaySpend(now: Date = Date()) throws -> Decimal? {
+    public func estimatedTodaySpend(now: Date = Date()) throws -> TodayBalanceEstimate? {
         try database.dbQueue.read { db in
             let rows = try BalanceSnapshotRow
                 .filter(Column("currency") == "CNY")
@@ -323,14 +323,20 @@ public struct UsageRepository: Sendable {
             }
             var previous = parsed[baselineIndex].total
             var spend = Decimal.zero
+            var topupDetected = false
             var anyToday = false
             for entry in parsed.dropFirst(baselineIndex + 1) where entry.timestamp >= todayStart {
                 anyToday = true
                 let delta = previous - entry.total
-                if delta > 0 { spend += delta }
+                if delta > 0 {
+                    spend += delta
+                } else if delta < 0 {
+                    topupDetected = true
+                }
                 previous = entry.total
             }
-            return anyToday ? spend : nil
+            guard anyToday else { return nil }
+            return TodayBalanceEstimate(amount: spend, topupDetected: topupDetected)
         }
     }
 
@@ -355,12 +361,17 @@ public struct UsageRepository: Sendable {
             guard todays.count >= 2, let first = todays.first else { return nil }
             var previous = first.total
             var spend = Decimal.zero
+            var topupDetected = false
             for entry in todays.dropFirst() {
                 let delta = previous - entry.total
-                if delta > 0 { spend += delta }
+                if delta > 0 {
+                    spend += delta
+                } else if delta < 0 {
+                    topupDetected = true
+                }
                 previous = entry.total
             }
-            return PartialTodayEstimate(amount: spend, since: first.timestamp)
+            return PartialTodayEstimate(amount: spend, since: first.timestamp, topupDetected: topupDetected)
         }
     }
 

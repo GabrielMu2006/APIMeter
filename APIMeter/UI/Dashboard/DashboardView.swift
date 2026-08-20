@@ -63,7 +63,7 @@ struct DashboardView: View {
             }
 
             UsageChart(
-                daily: state.dashboardViewModel.summary?.daily ?? [],
+                daily: state.dashboardViewModel.dailyList,
                 perKeyCosts: state.dashboardViewModel.perKeyCostsByDay.mapValues { entries in
                     entries.map { entry in
                         let name = state.dashboardViewModel.apiKeys
@@ -76,7 +76,7 @@ struct DashboardView: View {
             .frame(height: 150)
 
             HStack(alignment: .top, spacing: 12) {
-                DailyUsageList(daily: state.dashboardViewModel.summary?.daily ?? []) { day in
+                DailyUsageList(daily: state.dashboardViewModel.dailyList) { day in
                     state.selectedDay = day
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)

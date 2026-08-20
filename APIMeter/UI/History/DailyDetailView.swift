@@ -95,7 +95,7 @@ struct DailyDetailView: View {
 
     private var headlineCost: String {
         if isToday, let estimate = state.dashboardViewModel.todayBalanceEstimate {
-            return CurrencyFormatter.format(estimate, currency: "CNY")
+            return CurrencyFormatter.format(estimate.amount, currency: "CNY")
         }
         return summary?.cost.map { CurrencyFormatter.format($0, currency: "CNY") } ?? "—"
     }
