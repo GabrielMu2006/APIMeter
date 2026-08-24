@@ -1,5 +1,5 @@
+@preconcurrency import UserNotifications
 import Foundation
-import UserNotifications
 
 /// Anti-spam state machine (spec 54):
 /// - balance < threshold while not alerted -> notify once, set alerted

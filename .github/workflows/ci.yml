@@ -9,7 +9,7 @@ jobs:
   test:
     runs-on: macos-15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Build and test core (SPM)
         run: swift build && swift test
       - name: Build the macOS app
