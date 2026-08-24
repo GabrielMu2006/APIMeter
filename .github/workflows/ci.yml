@@ -17,3 +17,8 @@ jobs:
           xcodebuild -project APIMeter.xcodeproj -scheme APIMeter
           -configuration Debug -derivedDataPath .build/DerivedData
           CODE_SIGNING_ALLOWED=NO build
+      - name: Run app-hosted unit tests
+        run: >
+          xcodebuild test -project APIMeter.xcodeproj -scheme APIMeter
+          -only-testing:APIMeterAppTests -derivedDataPath .build/DerivedData
+          CODE_SIGNING_ALLOWED=NO

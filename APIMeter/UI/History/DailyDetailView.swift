@@ -22,7 +22,7 @@ struct DailyDetailView: View {
                     .monospacedDigit()
                 Spacer()
                 Button {
-                    state.selectedDay = nil
+                    state.closeDayDetail()
                 } label: {
                     Image(systemName: "xmark.circle.fill")
                         .font(.title3)

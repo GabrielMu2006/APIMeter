@@ -29,6 +29,11 @@ public final class AppEnvironment {
         AppEnvironment(database: try DatabaseManager(path: DatabaseManager.defaultLocation().path))
     }
 
+    /// In-memory environment for unit tests.
+    public static func ephemeral() throws -> AppEnvironment {
+        AppEnvironment(database: try DatabaseManager.ephemeral())
+    }
+
     public var databaseSizeBytes: Int64 {
         guard let attributes = try? FileManager.default.attributesOfItem(atPath: database.path) else { return 0 }
         return (attributes[.size] as? NSNumber)?.int64Value ?? 0

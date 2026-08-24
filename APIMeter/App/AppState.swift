@@ -24,6 +24,11 @@ public final class AppState {
         self.settingsViewModel = SettingsViewModel(environment: environment)
     }
 
+    /// Closes the day-detail sheet. Bound to the Done (X) button and Esc.
+    public func closeDayDetail() {
+        selectedDay = nil
+    }
+
     /// Menu bar / shortcut entry: show or hide the floating dashboard.
     public func toggleDashboard() {
         floatingPanelController?.toggle()
