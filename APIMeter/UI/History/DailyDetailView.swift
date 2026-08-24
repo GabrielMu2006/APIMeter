@@ -16,9 +16,22 @@ struct DailyDetailView: View {
 
     var body: some View {
         VStack(spacing: 16) {
-            Text(day.value)
-                .font(.title2.weight(.semibold))
-                .monospacedDigit()
+            HStack {
+                Text(day.value)
+                    .font(.title2.weight(.semibold))
+                    .monospacedDigit()
+                Spacer()
+                Button {
+                    state.selectedDay = nil
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.title3)
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+                .keyboardShortcut(.cancelAction)   // Esc also closes
+                .help("Close (Esc)")
+            }
 
             HStack(spacing: 10) {
                 MetricCard(
