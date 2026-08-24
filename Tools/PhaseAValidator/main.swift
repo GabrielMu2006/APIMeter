@@ -170,7 +170,10 @@ struct PhaseAValidator {
             print("import batches: " + String(batches.count))
             print("price rules: " + String(try repository.fetchPriceRules().count))
             for batch in batches {
-                print("  - " + (batch.filename ?? "?") + " rows=" + String(batch.rowCount) + " month=" + (batch.month ?? "?"))
+                let name = batch.filename ?? "?"
+                let rows = String(batch.rowCount)
+                let month = batch.month ?? "?"
+                print("  - " + name + " rows=" + rows + " month=" + month)
             }
             let keys = try repository.fetchAPIKeys()
             print("api keys: " + String(keys.count))
@@ -189,7 +192,10 @@ struct PhaseAValidator {
             for record in records {
                 let ts = record.timestamp.map(ISO8601.fractionalString) ?? "-"
                 let hashPrefix = String(ImportDeduplicator.rowHash(record).prefix(12))
-                print(String(record.id ?? 0) + " | " + ts + " | " + record.day.value + " | " + record.source.rawValue + " | req=" + (record.requestCount.map(String.init) ?? "-") + " | tok=" + (record.totalTokens.map(String.init) ?? "-") + " | hash=" + hashPrefix)
+                let rid = String(record.id ?? 0)
+                let req = record.requestCount.map(String.init) ?? "-"
+                let tok = record.totalTokens.map(String.init) ?? "-"
+                print(rid + " | " + ts + " | " + record.day.value + " | " + record.source.rawValue + " | req=" + req + " | tok=" + tok + " | hash=" + hashPrefix)
             }
         default:
             print("db: unknown subcommand")
