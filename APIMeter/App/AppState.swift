@@ -13,7 +13,10 @@ public final class AppState {
     /// Strong: the controller owns the NSPanel for the app's lifetime.
     public var floatingPanelController: FloatingPanelController?
     public weak var refreshCoordinator: RefreshCoordinator?
-    public weak var syncScheduler: SyncScheduler?
+    /// STRONG: the daily sync scheduler must live for the app's lifetime
+    /// (AppDelegate only holds it as a local). A weak reference here would
+    /// let it deallocate right after launch (Codex review P0).
+    public var syncScheduler: SyncScheduler?
     /// Set after creation so AppDelegate and shortcuts can reach the state.
     public nonisolated(unsafe) static var current: AppState?
 

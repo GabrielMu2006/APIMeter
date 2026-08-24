@@ -16,7 +16,8 @@ public final class DashboardViewModel {
     public var preset: RangePreset = .days30
     public var customStart = Calendar.current.date(byAdding: .day, value: -14, to: Date()) ?? Date()
     public var customEnd = Date()
-    public var selectedFingerprints: Set<String> = []
+    /// nil = all keys (default); empty set = none (Clear).
+    public var selectedFingerprints: Set<String>?
     public private(set) var summary: UsageSummary?
     public private(set) var today: DailyUsage?
     public private(set) var todayBalanceEstimate: TodayBalanceEstimate?
@@ -84,7 +85,7 @@ public final class DashboardViewModel {
         defer { isLoading = false }
         apiKeys = (try? environment.repository.fetchAPIKeys()) ?? []
         let (start, end) = range
-        let filter = selectedFingerprints.isEmpty ? nil : selectedFingerprints
+        let filter = selectedFingerprints
         let rangeRecords = (try? environment.repository.recordsInRange(from: start, to: end, fingerprints: filter)) ?? []
         perKeyCostsByDay = UsageAggregator.perKeyDailyCosts(rangeRecords)
         latestImportAt = (try? environment.repository.fetchImportBatches())?.first?.importedAt
@@ -132,15 +133,35 @@ public final class DashboardViewModel {
     }
 
     public func dayDetail(_ day: LocalDay) async -> UsageSummary? {
-        let filter = selectedFingerprints.isEmpty ? nil : selectedFingerprints
-        return try? environment.repository.summary(from: day, to: day, fingerprints: filter)
+        return try? environment.repository.summary(from: day, to: day, fingerprints: selectedFingerprints)
     }
 
     public func selectAllKeys() {
         selectedFingerprints = Set(apiKeys.map(\.fingerprint))
     }
 
+    /// Empty set = "No keys" (Clear shows nothing), nil = All.
     public func clearKeySelection() {
         selectedFingerprints = []
+    }
+
+    /// Toggles one key. nil (all) is treated as "all selected" first.
+    public func toggleKey(_ fingerprint: String) {
+        var set = selectedFingerprints ?? Set(apiKeys.map(\.fingerprint))
+        if set.contains(fingerprint) {
+            set.remove(fingerprint)
+        } else {
+            set.insert(fingerprint)
+        }
+        selectedFingerprints = set
+    }
+
+    /// Menu label: All Keys / No Keys / N of M Keys.
+    public var filterLabelText: String {
+        guard let selected = selectedFingerprints else { return "All Keys" }
+        if selected.isEmpty { return "No Keys" }
+        let total = apiKeys.count
+        if total > 0 && selected.count >= total { return "All Keys" }
+        return String(selected.count) + " of " + String(total) + " Keys"
     }
 }

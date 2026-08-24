@@ -8,7 +8,7 @@ struct AboutSettingsView: View {
                 .foregroundStyle(.tint)
             Text("API Meter")
                 .font(.title2.weight(.semibold))
-            Text("Version 1.1.0")
+            Text("Version 1.2.0")
                 .font(.callout)
                 .foregroundStyle(.secondary)
             Text("Native macOS usage dashboard for DeepSeek.\nBalance from the official API, history from official usage exports,\nrealtime estimates from the optional local gateway.")

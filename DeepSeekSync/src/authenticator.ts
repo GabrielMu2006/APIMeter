@@ -27,11 +27,16 @@ export async function loginAndSaveSession(context: BrowserContext): Promise<void
     const onUsage = url.startsWith("https://platform.deepseek.com/usage")
       || url.includes("/usage");
     // Extra confirmation: the usage page carries recognizable content.
+    // Alternation (not a character class!) - a character class matches any
+    // single character, which would accept the page too early (review P0).
     let hasMarker = false;
     if (onUsage) {
       try {
         const body = await page.locator("body").innerText({ timeout: 4000 });
-        hasMarker = /[消费金额用量信息请求次数Usage]/.test(body);
+        hasMarker = /消费金额|用量信息|API 请求次数|Usage/i.test(body);
+        // And the export control must exist - the strongest single signal.
+        const exportCount = await page.getByRole("button", { name: /导出|Export/i }).count();
+        hasMarker = hasMarker && exportCount > 0;
       } catch {
         hasMarker = false;
       }

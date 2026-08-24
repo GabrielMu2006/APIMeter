@@ -204,6 +204,19 @@ struct DatabaseTests {
         #expect(keyed[0].currency == nil)
     }
 
+    @Test func emptySelectionShowsNothing() throws {
+        let db = try DatabaseManager.ephemeral()
+        let repo = UsageRepository(database: db)
+        let day = LocalDay("2026-08-17")!
+        _ = try repo.upsert([UsageRecord(day: day, apiKeyFingerprint: "FP-A", requestCount: 1, amount: Decimal(string: "1.00"), currency: "CNY", source: .officialCSV, verification: .official)])
+        // Empty set = no keys selected -> nothing (Clear semantics).
+        let daily = try repo.dailyUsage(from: day, to: day, fingerprints: [])
+        #expect(daily.isEmpty)
+        // nil = all keys -> data present.
+        let all = try repo.dailyUsage(from: day, to: day, fingerprints: nil)
+        #expect(all.first?.cost == Decimal(string: "1.00"))
+    }
+
     @Test func apiKeyFilterInDailyQuery() throws {
         let db = try DatabaseManager.ephemeral()
         let repo = UsageRepository(database: db)

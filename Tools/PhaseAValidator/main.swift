@@ -51,7 +51,7 @@ struct PhaseAValidator {
         print("  apimeter db init|info|dump          database utilities")
         print("  apimeter analyze PATH [--out FILE]  analyze a ZIP/CSV usage export")
         print("  apimeter import PATH                import a usage export")
-        print("  apimeter daily [--days N]           print daily aggregation table")
+        print("  apimeter daily [--days N]           print daily aggregation table\n  apimeter rebuild PATH              rebuild usage data from a clean import")
         print("  apimeter selfcheck                  run internal validation checks")
         print("  apimeter gateway [--port N]         run the local usage gateway")
     }
@@ -208,12 +208,13 @@ struct PhaseAValidator {
         let data = try Data(contentsOf: url)
         var rows: [[String]]
         if data.starts(with: [0x50, 0x4B, 0x03, 0x04]) {
-            let files = try ZIPExtractor.extract(zipURL: url)
-            guard let first = files.first else {
+            let extraction = try ZIPExtractor.extract(zipURL: url)
+            defer { try? FileManager.default.removeItem(at: extraction.tempDir) }
+            guard let first = extraction.files.first else {
                 print("ZIP contains no CSV files.")
                 exit(1)
             }
-            print("ZIP extracted " + String(files.count) + " CSV file(s); analyzing first: " + first.lastPathComponent)
+            print("ZIP extracted " + String(extraction.files.count) + " CSV file(s); analyzing first: " + first.lastPathComponent)
             rows = try CSVParser.parse(data: try Data(contentsOf: first))
         } else {
             rows = try CSVParser.parse(data: data)

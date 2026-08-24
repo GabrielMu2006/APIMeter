@@ -101,32 +101,120 @@ public struct UsageRepository: Sendable {
     /// the same (day, model, api key). Old official rows for each incoming
     /// group are deleted first, so re-imports never accumulate.
     public func replaceOfficialRecords(_ records: [UsageRecord]) throws -> UsageUpsertStats {
+        let prepared = PreparedFile(
+            fileHash: "inline",
+            filename: nil,
+            records: records,
+            keyNames: [],
+            priceRules: [],
+            month: nil,
+            rowCount: records.count
+        )
+        return try importPreparedFiles([prepared], skipExisting: false, checkFileHash: false, recordBatch: false)
+    }
+
+    /// Imports prepared files in ONE transaction (review P1): either every
+    /// file lands or nothing does. Per-(day, model, key) replace semantics
+    /// apply inside the transaction. skipExisting: already-imported files
+    /// are skipped instead of failing (ZIP with a repeated sub-file).
+    public func importPreparedFiles(_ files: [PreparedFile], skipExisting: Bool, checkFileHash: Bool = true, recordBatch: Bool = true) throws -> UsageUpsertStats {
         try database.dbQueue.write { db in
             var inserted = 0
             var ignored = 0
-            var handledKeys = Set<String>()
-            for record in records {
-                let fingerprintKey = record.apiKeyFingerprint ?? ""
-                let groupKey = record.day.value + "|" + (record.model ?? "") + "|" + fingerprintKey
-                if !handledKeys.contains(groupKey) {
-                    handledKeys.insert(groupKey)
-                    if record.apiKeyFingerprint == nil {
-                        try db.execute(sql: """
-                            DELETE FROM usage_records
-                            WHERE source = ? AND day = ? AND model IS ? AND api_key_id IS NULL
-                            """, arguments: [UsageSource.officialCSV.rawValue, record.day.value, record.model])
+            for file in files {
+                if checkFileHash, try Self.batchExists(fileHash: file.fileHash, in: db) {
+                    if skipExisting { ignored += 1; continue }
+                    throw ImportError.duplicateFile(filename: file.filename ?? "?")
+                }
+                var handledGroups = Set<String>()
+                for record in file.records {
+                    let groupKey = record.day.value + "|" + (record.model ?? "") + "|" + (record.apiKeyFingerprint ?? "")
+                    if !handledGroups.contains(groupKey) {
+                        handledGroups.insert(groupKey)
+                        try Self.deleteOfficialGroup(record, in: db)
+                    }
+                    if try Self.insert(record, in: db) {
+                        inserted += 1
                     } else {
-                        try db.execute(sql: """
-                            DELETE FROM usage_records
-                            WHERE source = ? AND day = ? AND model IS ?
-                              AND api_key_id IN (SELECT id FROM api_keys WHERE fingerprint = ?)
-                            """, arguments: [UsageSource.officialCSV.rawValue, record.day.value, record.model, record.apiKeyFingerprint!])
+                        ignored += 1
                     }
                 }
-                if try Self.insert(record, in: db) { inserted += 1 } else { ignored += 1 }
+                for (fingerprint, officialName) in file.keyNames {
+                    try Self.setOfficialName(officialName, fingerprint: fingerprint, in: db)
+                }
+                for rule in file.priceRules {
+                    if try Self.priceRuleExists(rule, in: db) == false {
+                        var row = PriceRuleRow(
+                            id: nil, provider: rule.provider, model: rule.model,
+                            effectiveFrom: ISO8601.string(rule.effectiveFrom),
+                            effectiveTo: rule.effectiveTo.map(ISO8601.string),
+                            period: rule.period?.rawValue,
+                            cacheHitPrice: rule.cacheHitPrice.map(DecimalStorage.string),
+                            cacheMissPrice: rule.cacheMissPrice.map(DecimalStorage.string),
+                            outputPrice: rule.outputPrice.map(DecimalStorage.string),
+                            currency: rule.currency
+                        )
+                        try row.insert(db)
+                    }
+                }
+                if recordBatch {
+                    var batch = ImportBatchRow(
+                        id: nil, fileHash: file.fileHash, filename: file.filename, month: file.month,
+                        importedAt: ISO8601.string(Date()), rowCount: file.rowCount
+                    )
+                    try batch.insert(db)
+                }
             }
             return UsageUpsertStats(inserted: inserted, ignoredDuplicates: ignored)
         }
+    }
+
+    /// Deletes official rows of one (day, model, api key) group (the
+    /// replace-semantics core; also used by the transactional importer).
+    private static func deleteOfficialGroup(_ record: UsageRecord, in db: Database) throws {
+        if record.apiKeyFingerprint == nil {
+            try db.execute(sql: """
+                DELETE FROM usage_records
+                WHERE source = ? AND day = ? AND model IS ? AND api_key_id IS NULL
+                """, arguments: [UsageSource.officialCSV.rawValue, record.day.value, record.model])
+        } else {
+            try db.execute(sql: """
+                DELETE FROM usage_records
+                WHERE source = ? AND day = ? AND model IS ?
+                  AND api_key_id IN (SELECT id FROM api_keys WHERE fingerprint = ?)
+                """, arguments: [UsageSource.officialCSV.rawValue, record.day.value, record.model, record.apiKeyFingerprint!])
+        }
+    }
+
+    private static func setOfficialName(_ name: String, fingerprint: String, in db: Database) throws {
+        let row = APIKeyRow.filter(Column("fingerprint") == fingerprint)
+        if try row.isEmpty(db) {
+            var newRow = APIKeyRow(id: nil, fingerprint: fingerprint, displayName: nil, officialName: name, enabled: true, createdAt: ISO8601.string(Date()))
+            try newRow.insert(db)
+        } else {
+            try row.updateAll(db, Column("official_name").set(to: name))
+        }
+    }
+
+    private static func batchExists(fileHash: String, in db: Database) throws -> Bool {
+        try ImportBatchRow.filter(Column("file_hash") == fileHash).isEmpty(db) == false
+    }
+
+    private static func priceRuleExists(_ rule: PriceRule, in db: Database) throws -> Bool {
+        let rows = try PriceRuleRow.fetchAll(db)
+        for row in rows {
+            guard let candidate = row.modelRule else { continue }
+            if candidate.model == rule.model
+                && candidate.effectiveFrom == rule.effectiveFrom
+                && candidate.effectiveTo == rule.effectiveTo
+                && candidate.cacheHitPrice == rule.cacheHitPrice
+                && candidate.cacheMissPrice == rule.cacheMissPrice
+                && candidate.outputPrice == rule.outputPrice
+                && candidate.currency == rule.currency {
+                return true
+            }
+        }
+        return false
     }
 
     // MARK: - Queries

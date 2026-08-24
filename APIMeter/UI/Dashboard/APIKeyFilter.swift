@@ -14,9 +14,10 @@ struct APIKeyFilter: View {
             }
             ForEach(viewModel.apiKeys) { key in
                 Button {
-                    toggle(key.fingerprint)
+                    viewModel.toggleKey(key.fingerprint)
                 } label: {
-                    if viewModel.selectedFingerprints.contains(key.fingerprint) {
+                    let isOn = viewModel.selectedFingerprints?.contains(key.fingerprint) ?? true
+                    if isOn {
                         Label(key.bestDisplayName, systemImage: "checkmark")
                     } else {
                         Label(key.bestDisplayName, systemImage: "circle")
@@ -41,18 +42,6 @@ struct APIKeyFilter: View {
     }
 
     private var labelText: String {
-        let total = viewModel.apiKeys.count
-        let selected = viewModel.selectedFingerprints.count
-        if selected == 0 { return "All Keys" }
-        if selected == total && total > 0 { return "All Keys" }
-        return String(selected) + " of " + String(total) + " Keys"
-    }
-
-    private func toggle(_ fingerprint: String) {
-        if viewModel.selectedFingerprints.contains(fingerprint) {
-            viewModel.selectedFingerprints.remove(fingerprint)
-        } else {
-            viewModel.selectedFingerprints.insert(fingerprint)
-        }
+        viewModel.filterLabelText
     }
 }

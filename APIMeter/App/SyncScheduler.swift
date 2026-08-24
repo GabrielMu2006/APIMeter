@@ -79,12 +79,26 @@ public final class SyncScheduler {
             await environmentStateRefresh()
             Log.info("SyncScheduler: daily export synced and imported (" + String(result.inserted) + " new records)")
         } catch let error as ImportError {
-            // The file was already imported (same-day re-run): still a success.
-            environment.settings.lastSyncDay = LocalDay(date: Date()).value
-            finish(ok: true, message: error.localizedDescription, importedRecords: 0, fileHash: hash)
+            if Self.isBenignImportError(error) {
+                // Already imported (same-day re-run or duplicate): success.
+                environment.settings.lastSyncDay = LocalDay(date: Date()).value
+                finish(ok: true, message: error.localizedDescription, importedRecords: 0, fileHash: hash)
+            } else {
+                // Any other import failure keeps today marked as NOT synced
+                // so it retries later (Codex review P0).
+                finish(ok: false, message: "import failed: " + error.localizedDescription)
+            }
         } catch {
             finish(ok: false, message: "import failed: " + error.localizedDescription)
         }
+    }
+
+    /// Only a duplicate file is a benign "already done" outcome. Anything
+    /// else (unsupported schema, empty file, ZIP failure, too large, ...)
+    /// must stay a FAILURE so the day retries.
+    static func isBenignImportError(_ error: ImportError) -> Bool {
+        if case .duplicateFile = error { return true }
+        return false
     }
 
     private func environmentStateRefresh() async {
@@ -93,12 +107,25 @@ public final class SyncScheduler {
         await state.dashboardViewModel.reload()
     }
 
-    private struct CLIOutput {
+    struct CLIOutput {
         let ok: Bool
         let sessionExpired: Bool
         let error: String?
         let path: String?
         let sha256: String?
+    }
+
+    /// Parses the single JSON line the CLI prints (stdout, both outcomes).
+    static func parseCLIOutput(_ line: String) -> CLIOutput? {
+        guard let data = line.data(using: .utf8),
+              let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return nil }
+        return CLIOutput(
+            ok: obj["ok"] as? Bool ?? false,
+            sessionExpired: obj["sessionExpired"] as? Bool ?? false,
+            error: obj["error"] as? String,
+            path: obj["path"] as? String,
+            sha256: obj["sha256"] as? String
+        )
     }
 
     private func runSyncCLI() async -> CLIOutput? {
@@ -136,23 +163,18 @@ public final class SyncScheduler {
             return nil
         }
         let stdout = String(data: outPipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
-        let stderr = String(data: errPipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
-        guard let line = stdout.split(separator: "\n").last, let data = line.data(using: .utf8) else {
+        guard let lineSubstring = stdout.split(separator: "\n").last else {
+            let stderr = String(data: errPipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
             let errLine = stderr.split(separator: "\n").last.map(String.init) ?? "unknown error"
             finish(ok: false, message: "sync failed: " + errLine)
             return nil
         }
-        guard let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+        let line = String(lineSubstring)
+        guard let output = Self.parseCLIOutput(line) else {
             finish(ok: false, message: "unparseable sync output")
             return nil
         }
-        return CLIOutput(
-            ok: obj["ok"] as? Bool ?? false,
-            sessionExpired: obj["sessionExpired"] as? Bool ?? false,
-            error: obj["error"] as? String,
-            path: obj["path"] as? String,
-            sha256: obj["sha256"] as? String
-        )
+        return output
     }
 
     private func finish(ok: Bool, message: String, importedRecords: Int? = nil, fileHash: String? = nil) {

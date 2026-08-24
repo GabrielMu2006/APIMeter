@@ -8,6 +8,26 @@ import { loadSession, saveSession, deleteSession } from "./sessionStore";
 import { loadState, saveState } from "./syncState";
 
 const JSON_MODE = process.argv.includes("--json");
+/** Human logs: stdout in human mode, stderr in JSON mode (stdout then
+ * carries exactly one machine-readable JSON line - review P1 protocol). */
+const log = (...args: unknown[]) => {
+  if (JSON_MODE) {
+    console.error(...args);
+  } else {
+    console.log(...args);
+  }
+};
+
+/** The persistent profile is scratch space; Keychain is the only durable
+ * session copy. Remove it after each run so no plaintext cookie copy is
+ * left behind (review P1). */
+function cleanProfile(): void {
+  try {
+    fs.rmSync(PROFILE_DIR, { recursive: true, force: true });
+  } catch {
+    /* best effort */
+  }
+}
 
 async function main(): Promise<void> {
   const command = process.argv[2] ?? "help";
@@ -24,6 +44,7 @@ async function main(): Promise<void> {
           await loginAndSaveSession(context);
         } finally {
           await context.close();
+          cleanProfile();
         }
         break;
       }
@@ -61,6 +82,7 @@ async function main(): Promise<void> {
           }
         } finally {
           await context.close();
+          cleanProfile();
         }
         break;
       }
@@ -101,12 +123,14 @@ async function main(): Promise<void> {
           }
         } finally {
           await context.close();
+          cleanProfile();
         }
         break;
       }
       case "logout": {
         deleteSession();
-        console.log("session removed from Keychain");
+        cleanProfile();
+        console.log("session removed from Keychain; browser profile cleaned");
         break;
       }
       default:
@@ -119,7 +143,9 @@ async function main(): Promise<void> {
     }
   } catch (error) {
     if (JSON_MODE) {
-      console.error(JSON.stringify({
+      // Machine protocol: ALWAYS one JSON line on stdout (success or failure).
+      // Human logs go to stderr only.
+      console.log(JSON.stringify({
         ok: false,
         sessionExpired: error instanceof SessionExpiredError,
         error: error instanceof Error ? error.message : String(error),

@@ -41,8 +41,9 @@ public protocol CSVMapper: Sendable {
     func map(rows: [[String]]) throws -> CSVMapping
 }
 
-/// Full import pipeline (spec 13):
-/// File -> Detect Type -> ZIP Extract -> CSV Parser -> Mapper -> Dedup -> SQLite -> Aggregation.
+/// Full import pipeline (spec 13). ZIP imports are ATOMIC: every contained
+/// CSV is parsed/mapped first, then all files land in ONE database
+/// transaction - a failure anywhere leaves the database untouched (review P1).
 public struct UsageImportService: Sendable {
     public static let maxFileBytes: Int64 = 100 * 1024 * 1024
 
@@ -64,81 +65,87 @@ public struct UsageImportService: Sendable {
         } catch {
             throw ImportError.unreadableFile(error.localizedDescription)
         }
-        let fileHash = ImportDeduplicator.fileHash(data)
 
-        // File-level dedup (spec 16).
-        guard try repository.importBatchExists(fileHash: fileHash) == false else {
-            throw ImportError.duplicateFile(filename: url.lastPathComponent)
-        }
-
-        // Detect ZIP by magic bytes, not by extension.
         let isZip = data.starts(with: [0x50, 0x4B, 0x03, 0x04])
         if isZip {
-            let files = try ZIPExtractor.extract(zipURL: url)
-            guard !files.isEmpty else { throw ImportError.emptyFile }
-            var total = ImportResult(fileHash: fileHash, filesImported: files.count, rowsInFile: 0, inserted: 0, ignoredDuplicates: 0)
-            for file in files {
-                let part = try await importCSV(at: file, mapper: mapper)
-                total = ImportResult(fileHash: total.fileHash, filesImported: total.filesImported, rowsInFile: total.rowsInFile + part.rowsInFile, inserted: total.inserted + part.inserted, ignoredDuplicates: total.ignoredDuplicates + part.ignoredDuplicates)
-            }
-            return total
+            return try await importArchive(data: data, url: url, mapper: mapper)
         }
-        return try await importCSV(at: url, mapper: mapper)
-    }
-
-    /// Imports one CSV file (also used for each file inside a ZIP).
-    public func importCSV(at url: URL, mapper: CSVMapper) async throws -> ImportResult {
-        let data: Data
-        do {
-            data = try Data(contentsOf: url)
-        } catch {
-            throw ImportError.unreadableFile(error.localizedDescription)
-        }
-        let fileHash = ImportDeduplicator.fileHash(data)
-        guard try repository.importBatchExists(fileHash: fileHash) == false else {
+        let prepared = try prepareCSV(data: data, filename: url.lastPathComponent, mapper: mapper)
+        if try repository.importBatchExists(fileHash: prepared.fileHash) {
             throw ImportError.duplicateFile(filename: url.lastPathComponent)
         }
+        let stats = try repository.importPreparedFiles([prepared], skipExisting: false)
+        let reconciled = try repository.reconcileDerivedCosts()
+        Log.info("Import " + url.lastPathComponent + ": " + String(stats.inserted) + " inserted, " + String(stats.ignoredDuplicates) + " ignored, " + String(reconciled) + " reconciled")
+        return ImportResult(
+            fileHash: prepared.fileHash,
+            filesImported: 1,
+            rowsInFile: prepared.rowCount,
+            inserted: stats.inserted,
+            ignoredDuplicates: stats.ignoredDuplicates
+        )
+    }
+
+    // MARK: - ZIP (atomic)
+
+    private func importArchive(data: Data, url: URL, mapper: CSVMapper) async throws -> ImportResult {
+        let extraction = try ZIPExtractor.extract(zipURL: url)
+        defer {
+            // Always remove the scratch directory (review P1).
+            try? FileManager.default.removeItem(at: extraction.tempDir)
+        }
+        guard !extraction.files.isEmpty else { throw ImportError.emptyFile }
+
+        // Phase 1: parse + map every file BEFORE any write. Any failure here
+        // leaves the database untouched.
+        var preparedFiles: [PreparedFile] = []
+        var alreadyImported = 0
+        var totalRows = 0
+        for file in extraction.files {
+            let fileData = try Data(contentsOf: file)
+            let prepared = try prepareCSV(data: fileData, filename: file.lastPathComponent, mapper: mapper)
+            if try repository.importBatchExists(fileHash: prepared.fileHash) {
+                alreadyImported += 1
+                continue
+            }
+            totalRows += prepared.rowCount
+            preparedFiles.append(prepared)
+        }
+        guard !preparedFiles.isEmpty else {
+            throw ImportError.duplicateFile(filename: url.lastPathComponent)
+        }
+
+        // Phase 2: one transaction for every file (review P1).
+        let stats = try repository.importPreparedFiles(preparedFiles, skipExisting: true)
+        let reconciled = try repository.reconcileDerivedCosts()
+        Log.info("Import ZIP " + url.lastPathComponent + ": " + String(stats.inserted) + " inserted, " + String(stats.ignoredDuplicates) + " ignored, " + String(alreadyImported) + " already imported, " + String(reconciled) + " reconciled")
+        return ImportResult(
+            fileHash: ImportDeduplicator.fileHash(data),
+            filesImported: extraction.files.count,
+            rowsInFile: totalRows,
+            inserted: stats.inserted,
+            ignoredDuplicates: stats.ignoredDuplicates + alreadyImported
+        )
+    }
+
+    // MARK: - Preparation (pure IO + mapping, no writes)
+
+    private func prepareCSV(data: Data, filename: String, mapper: CSVMapper) throws -> PreparedFile {
+        let fileHash = ImportDeduplicator.fileHash(data)
         let rows = try CSVParser.parse(data: data)
         guard rows.count > 1 else { throw ImportError.emptyFile }
-
         let mapping = try mapper.map(rows: rows)
         guard !mapping.records.isEmpty else {
             throw ImportError.unsupportedSchema(details: "Mapper '" + mapper.schemaID + "' produced no records")
         }
-
-        // Replace semantics: newer exports supersede earlier totals for the
-        // same day buckets (cumulative snapshots - never accumulate).
-        let stats = try repository.replaceOfficialRecords(mapping.records)
-        // Cross-check derived per-key costs against billing totals (idempotent,
-        // order-independent - safe to run after every file import).
-        let reconciled = try repository.reconcileDerivedCosts()
-        // Official key names from the export become the api_keys display names.
-        for (fingerprint, officialName) in mapping.keyNames {
-            try repository.setOfficialName(officialName, fingerprint: fingerprint)
-        }
-        // Seed official price rules (never hardcoded prices, spec 28-30).
-        var rulesSeeded = 0
-        for rule in mapping.priceRules {
-            if try repository.hasPriceRule(rule) == false {
-                try repository.upsertPriceRules([rule])
-                rulesSeeded += 1
-            }
-        }
-        let month = Self.monthOf(mapping.records)
-        try repository.recordImportBatch(ImportBatch(
+        return PreparedFile(
             fileHash: fileHash,
-            filename: url.lastPathComponent,
-            month: month,
-            importedAt: Date(),
+            filename: filename,
+            records: mapping.records,
+            keyNames: mapping.keyNames,
+            priceRules: mapping.priceRules,
+            month: Self.monthOf(mapping.records),
             rowCount: rows.count - 1
-        ))
-        Log.info("Import " + url.lastPathComponent + ": " + String(stats.inserted) + " inserted, " + String(stats.ignoredDuplicates) + " duplicate rows ignored, " + String(rulesSeeded) + " price rules seeded, " + String(reconciled) + " cost records reconciled")
-        return ImportResult(
-            fileHash: fileHash,
-            filesImported: 1,
-            rowsInFile: rows.count - 1,
-            inserted: stats.inserted,
-            ignoredDuplicates: stats.ignoredDuplicates
         )
     }
 
