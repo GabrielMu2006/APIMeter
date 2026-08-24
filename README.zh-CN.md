@@ -37,6 +37,7 @@ API Meter 是一个本地优先的 macOS 应用，把 DeepSeek 官方数据（�
 
 - macOS 15 或更高
 - 预编译 DMG 为 Apple Silicon（arm64）。Intel 用户请从源码构建（见[开发](#开发)）
+- 源码构建需要 Xcode 26+（macOS 26 SDK，用于 Liquid Glass 按钮样式）；App 本体在 macOS 15+ 上运行
 
 ## 安装
 

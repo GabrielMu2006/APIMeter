@@ -37,6 +37,7 @@ All data stays on your Mac. No scraping, no cookies, no MITM.
 
 - macOS 15 or later
 - The prebuilt DMG is Apple Silicon (arm64). Intel Macs: build from source (see [Development](#development)).
+- Building from source requires Xcode 26+ (macOS 26 SDK, for the Liquid Glass button styles); the app itself runs on macOS 15+.
 
 ## Installation
 
