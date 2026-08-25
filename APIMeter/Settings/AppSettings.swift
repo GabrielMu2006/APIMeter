@@ -49,6 +49,7 @@ public final class AppSettings {
         static let lastSyncDay = "settings.sync.lastSyncDay"
         static let lastSyncResult = "settings.sync.lastResult"
         static let syncToolPath = "settings.sync.toolPath"
+        static let lastSyncFailureDay = "settings.sync.lastFailureDay"
     }
 
     public init(defaults: UserDefaults = .standard) {
@@ -63,6 +64,7 @@ public final class AppSettings {
         self.lastSyncDay = defaults.string(forKey: Keys.lastSyncDay)
         self.lastSyncResult = defaults.string(forKey: Keys.lastSyncResult)
         self.syncToolPath = defaults.string(forKey: Keys.syncToolPath)
+        self.lastSyncFailureDay = defaults.string(forKey: Keys.lastSyncFailureDay)
     }
 
     public var retention: HistoryRetention {
@@ -107,6 +109,17 @@ public final class AppSettings {
     /// Directory containing the deepseek-sync CLI (with its bundled Node).
     /// nil = daily export sync not configured (no machine-specific paths).
     public var syncToolPath: String? {
-        didSet { defaults.set(syncToolPath, forKey: Keys.syncToolPath) }
+        didSet {
+            defaults.set(syncToolPath, forKey: Keys.syncToolPath)
+            // A (re)configured sync path may fix a dead setup: lift today's
+            // failure cooldown so the next 10-min check retries.
+            self.lastSyncFailureDay = nil
+        }
+    }
+
+    /// Day (yyyy-MM-dd) of the last failed sync attempt. Blocks the 10-minute
+    /// timer from retrying a terminal failure the same day (notification spam).
+    public var lastSyncFailureDay: String? {
+        didSet { defaults.set(lastSyncFailureDay, forKey: Keys.lastSyncFailureDay) }
     }
 }

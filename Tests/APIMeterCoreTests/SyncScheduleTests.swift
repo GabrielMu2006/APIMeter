@@ -31,6 +31,34 @@ struct SyncScheduleTests {
         #expect(SyncSchedule.isDue(lastSyncDay: "2026-08-15", now: now))
     }
 
+    @Test func failureTodaySuppressesTimerRetry() {
+        // Session expired at 00:35; the 10-min timer must NOT re-run today.
+        let now = date("2026-08-17T00:40")
+        #expect(SyncSchedule.shouldRun(lastSyncDay: nil, lastFailureDay: "2026-08-17", now: now) == false)
+    }
+
+    @Test func forcedRunBypassesFailureCooldown() {
+        // Launch catch-up is force=true: after a re-login the same day recovers.
+        let now = date("2026-08-17T11:00")
+        #expect(SyncSchedule.shouldRun(lastSyncDay: nil, lastFailureDay: "2026-08-17", now: now, force: true))
+    }
+
+    @Test func failureCooldownExpiresNextDay() {
+        // Yesterday's failure must not block today's scheduled run.
+        let now = date("2026-08-18T00:30")
+        #expect(SyncSchedule.shouldRun(lastSyncDay: nil, lastFailureDay: "2026-08-17", now: now))
+    }
+
+    @Test func noFailureMeansRunsRegardless() {
+        let now = date("2026-08-17T00:30")
+        #expect(SyncSchedule.shouldRun(lastSyncDay: nil, lastFailureDay: nil, now: now))
+    }
+
+    @Test func failureCooldownNeverOverridesNotDue() {
+        let now = date("2026-08-17T00:29")
+        #expect(SyncSchedule.shouldRun(lastSyncDay: nil, lastFailureDay: "2026-08-16", now: now) == false)
+    }
+
     @Test func nextRunIsTomorrowAfterTodayPassed() {
         let now = date("2026-08-17T09:00")
         let next = SyncSchedule.nextRun(now: now)

@@ -18,6 +18,16 @@ public enum SyncSchedule {
         return now >= scheduled
     }
 
+    /// Combined gate: scheduled time AND not already failed today.
+    /// - force = true bypasses the failure cooldown (used at launch so a
+    ///   re-login can recover the same day).
+    public static func shouldRun(lastSyncDay: String?, lastFailureDay: String?, now: Date = Date(), hour: Int = defaultHour, minute: Int = defaultMinute, force: Bool = false) -> Bool {
+        guard isDue(lastSyncDay: lastSyncDay, now: now, hour: hour, minute: minute) else { return false }
+        if force { return true }
+        let today = LocalDay(date: now).value
+        return lastFailureDay != today
+    }
+
     /// Next scheduled moment (for display).
     public static func nextRun(now: Date = Date(), hour: Int = defaultHour, minute: Int = defaultMinute) -> Date? {
         var calendar = Calendar(identifier: .gregorian)

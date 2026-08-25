@@ -26,7 +26,8 @@ public final class SyncScheduler {
     public func start() {
         scheduleChecks()
         // Catch-up: if today's run was missed (app closed at 00:30), run now.
-        Task { await checkAndRunIfDue() }
+        // force: a re-login after a failure recovers via app relaunch.
+        Task { await checkAndRunIfDue(force: true) }
     }
 
     public var nextRunText: String {
@@ -37,15 +38,19 @@ public final class SyncScheduler {
     private func scheduleChecks() {
         checkTimer?.invalidate()
         let timer = Timer(timeInterval: 10 * 60, repeats: true) { [weak self] _ in
-            Task { @MainActor in await self?.checkAndRunIfDue() }
+            Task { @MainActor in await self?.checkAndRunIfDue(force: false) }
         }
         RunLoop.main.add(timer, forMode: .common)
         checkTimer = timer
     }
 
-    private func checkAndRunIfDue() async {
+    private func checkAndRunIfDue(force: Bool) async {
         guard !isRunning else { return }
-        guard SyncSchedule.isDue(lastSyncDay: environment.settings.lastSyncDay) else { return }
+        guard SyncSchedule.shouldRun(
+            lastSyncDay: environment.settings.lastSyncDay,
+            lastFailureDay: environment.settings.lastSyncFailureDay,
+            force: force
+        ) else { return }
         await run()
     }
 
@@ -56,14 +61,21 @@ public final class SyncScheduler {
 
         // 1. Run the sync CLI (hidden browser, ~1 min) and parse its JSON.
         guard let output = await runSyncCLI() else {
+            _ = markFailure()
             return
         }
         if output.sessionExpired {
+            // Only the FIRST failure of the day notifies (spam fix: the
+            // 10-min timer is also suppressed after this by the cooldown).
+            let firstFailureToday = markFailure()
             finish(ok: false, message: "DeepSeek session expired. Please login again.")
-            postFailureNotification("DeepSeek session expired. Please login again.")
+            if firstFailureToday {
+                postFailureNotification("DeepSeek session expired. Please login again.")
+            }
             return
         }
         guard output.ok, let path = output.path, let hash = output.sha256 else {
+            _ = markFailure()
             finish(ok: false, message: output.error ?? "sync failed")
             return
         }
@@ -75,6 +87,7 @@ public final class SyncScheduler {
                 mapper: DeepSeekOfficialCSVMapper()
             )
             environment.settings.lastSyncDay = LocalDay(date: Date()).value
+            environment.settings.lastSyncFailureDay = nil
             finish(ok: true, message: "Imported " + String(result.inserted) + " new records", importedRecords: result.inserted, fileHash: hash)
             await environmentStateRefresh()
             Log.info("SyncScheduler: daily export synced and imported (" + String(result.inserted) + " new records)")
@@ -82,15 +95,30 @@ public final class SyncScheduler {
             if Self.isBenignImportError(error) {
                 // Already imported (same-day re-run or duplicate): success.
                 environment.settings.lastSyncDay = LocalDay(date: Date()).value
+                environment.settings.lastSyncFailureDay = nil
                 finish(ok: true, message: error.localizedDescription, importedRecords: 0, fileHash: hash)
             } else {
                 // Any other import failure keeps today marked as NOT synced
                 // so it retries later (Codex review P0).
+                _ = markFailure()
                 finish(ok: false, message: "import failed: " + error.localizedDescription)
             }
         } catch {
+            _ = markFailure()
             finish(ok: false, message: "import failed: " + error.localizedDescription)
         }
+    }
+
+    /// Cooldown: one failed attempt per day - the 10-minute timer must not
+    /// spam terminal failures (or their notifications).
+    /// - Returns: true when this is the FIRST failure of the day (caller may
+    ///   notify); false for repeats.
+    @discardableResult
+    private func markFailure() -> Bool {
+        let today = LocalDay(date: Date()).value
+        let first = environment.settings.lastSyncFailureDay != today
+        environment.settings.lastSyncFailureDay = today
+        return first
     }
 
     /// Only a duplicate file is a benign "already done" outcome. Anything
