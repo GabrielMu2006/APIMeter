@@ -7,10 +7,13 @@ API Meter is a local-first macOS app. All data stays on your Mac.
 - DeepSeek API key: macOS Keychain only (never in the database, preferences, or logs).
 - Usage history: local SQLite database in ~/Library/Application Support/APIMeter/.
 - Balance snapshots: same local database.
-- DeepSeekSync session (if used): macOS Keychain, encrypted at rest by the OS.
-  During a run, Chromium also writes a cookie/localStorage copy into a
-  temporary browser profile under ~/Library/Application Support/DeepSeekSync/
-  (cleaned automatically after every command; the Keychain stays authoritative).
+- DeepSeekSync session (if used): macOS Keychain, encrypted at rest by the OS,
+  plus a persistent Chromium profile under
+  ~/Library/Application Support/DeepSeekSync/browser-profile/. The profile
+  holds the platform's device-bound login state (browser identity) that a
+  Keychain copy cannot fully capture, so it stays on disk between runs;
+  removing it invalidates the login. Both copies are removed by logout or by
+  deleting ~/Library/Application Support/DeepSeekSync/.
 
 ## What API Meter never does
 

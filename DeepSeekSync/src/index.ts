@@ -8,26 +8,6 @@ import { loadSession, saveSession, deleteSession } from "./sessionStore";
 import { loadState, saveState } from "./syncState";
 
 const JSON_MODE = process.argv.includes("--json");
-/** Human logs: stdout in human mode, stderr in JSON mode (stdout then
- * carries exactly one machine-readable JSON line - review P1 protocol). */
-const log = (...args: unknown[]) => {
-  if (JSON_MODE) {
-    console.error(...args);
-  } else {
-    console.log(...args);
-  }
-};
-
-/** The persistent profile is scratch space; Keychain is the only durable
- * session copy. Remove it after each run so no plaintext cookie copy is
- * left behind (review P1). */
-function cleanProfile(): void {
-  try {
-    fs.rmSync(PROFILE_DIR, { recursive: true, force: true });
-  } catch {
-    /* best effort */
-  }
-}
 
 async function main(): Promise<void> {
   const command = process.argv[2] ?? "help";
@@ -36,15 +16,16 @@ async function main(): Promise<void> {
     switch (command) {
       case "login": {
         deleteSession();
-        // The browser profile is scratch space; Keychain holds the only
-        // session copy. A fresh profile avoids cross-mode artifacts.
+        // The browser profile carries DeepSeek's device-bound session state
+        // (IndexedDB etc.) that storageState does NOT capture. It must stay
+        // on disk between runs or the platform invalidates the login. Only
+        // wipe it when (re)logging in so the new session starts clean.
         fs.rmSync(PROFILE_DIR, { recursive: true, force: true });
         const context = await launchPersistent("headed");
         try {
           await loginAndSaveSession(context);
         } finally {
           await context.close();
-          cleanProfile();
         }
         break;
       }
@@ -82,7 +63,6 @@ async function main(): Promise<void> {
           }
         } finally {
           await context.close();
-          cleanProfile();
         }
         break;
       }
@@ -123,13 +103,16 @@ async function main(): Promise<void> {
           }
         } finally {
           await context.close();
-          cleanProfile();
         }
         break;
       }
       case "logout": {
         deleteSession();
-        cleanProfile();
+        try {
+          fs.rmSync(PROFILE_DIR, { recursive: true, force: true });
+        } catch {
+          /* best effort */
+        }
         console.log("session removed from Keychain; browser profile cleaned");
         break;
       }
