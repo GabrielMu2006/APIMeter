@@ -7,6 +7,11 @@ API Meter is a local-first macOS app. All data stays on your Mac.
 - DeepSeek API key: macOS Keychain only (never in the database, preferences, or logs).
 - Usage history: local SQLite database in ~/Library/Application Support/APIMeter/.
 - Balance snapshots: same local database.
+- DeepSeekSync (if used): when the app's one-click setup is used, it downloads the
+  module source archive from github.com/GabrielMu2006/APIMeter and runs the
+  module's setup-runtime.sh, which downloads portable Node (nodejs.org), npm
+  packages, and Chromium (Playwright CDN) into the app-managed copy under
+  ~/Library/Application Support/APIMeter/DeepSeekSync.
 - DeepSeekSync session (if used): macOS Keychain, encrypted at rest by the OS,
   plus a persistent Chromium profile under
   ~/Library/Application Support/DeepSeekSync/browser-profile/. The profile

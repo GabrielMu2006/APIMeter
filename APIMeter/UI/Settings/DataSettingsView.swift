@@ -41,6 +41,64 @@ struct DataSettingsView: View {
                 }
             }
 
+            Section("DeepSeekSync Setup") {
+                if let installer = state.syncInstaller {
+                    switch installer.phase {
+                    case .idle:
+                        if installer.isConfigured {
+                            Label("已安装", systemImage: "checkmark.circle.fill").foregroundStyle(.secondary)
+                        } else {
+                            Button("自动下载并安装 DeepSeekSync") {
+                                Task { await installer.install() }
+                            }
+                            Text("首次约 450MB（Node + Chromium，一次性）；安装后会自动打开 DeepSeek 登录窗口。")
+                                .font(.caption2)
+                                .foregroundStyle(.tertiary)
+                        }
+                    case .downloading(let fraction):
+                        LabeledContent("下载模块", value: String(Int(fraction * 100)) + "%")
+                        ProgressView(value: fraction)
+                    case .extracting:
+                        LabeledContent("状态", value: "解压模块...")
+                        ProgressView()
+                    case .settingUp:
+                        LabeledContent("状态", value: "安装运行时（Node + Chromium ~450MB）...")
+                        ProgressView()
+                    case .openingLogin:
+                        LabeledContent("状态", value: "已打开 DeepSeek 登录窗口")
+                        ProgressView()
+                        Text("请在弹出的浏览器中完成登录；完成后此页会自动更新。")
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
+                    case .done:
+                        Label("安装完成，请在登录窗口中完成 DeepSeek 登录", systemImage: "checkmark.circle")
+                    case .cancelled:
+                        Button("重新自动安装") { Task { await installer.install() } }
+                    case .failed(let message):
+                        Text("安装失败：" + message)
+                            .font(.caption)
+                            .foregroundStyle(.red)
+                        Button("重试") { Task { await installer.install() } }
+                    }
+                    if !installer.logTail.isEmpty {
+                        ScrollView {
+                            Text(installer.logTail)
+                                .font(.caption2.monospaced())
+                                .textSelection(.enabled)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                        .frame(maxHeight: 90)
+                    }
+                    if installer.isActive {
+                        Button("取消", role: .destructive) { installer.cancel() }
+                    }
+                } else {
+                    Text("自动安装不可用。请手动填写下方路径。")
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                }
+            }
+
             Section("Daily Export Sync") {
                 LabeledContent("Status", value: syncStatusText)
                 TextField("DeepSeekSync path (empty = disabled)", text: Binding(

@@ -147,6 +147,11 @@ Key 只保存在 macOS 钥匙串（条目 `com.apimeter.deepseek-api-keys`）。
 一个独立 CLI（Node + Playwright），在**自己的**浏览器配置里打开官方用量页面，
 点击官方「导出」按钮并下载 ZIP。App 每天 00:30 运行一次（错过则下次启动/唤醒补跑）。
 
+**一键安装（v1.3.0）**：未配置路径时，App 启动会询问是否自动下载并安装该模块
+（先从 GitHub 下载仅源码包，再运行 setup-runtime.sh 下载便携 Node + Chromium，
+首次约 450MB，安装后自动打开 DeepSeek 登录窗口）。托管副本位于
+~/Library/Application Support/APIMeter/DeepSeekSync。手动步骤（同样可用）：
+
 ```bash
 cd DeepSeekSync
 ./scripts/setup-runtime.sh   # 内置便携 Node + 安装 Playwright 与 Chromium（无需系统安装）
@@ -159,14 +164,15 @@ cd DeepSeekSync
 ```
 
 然后在 App 里指定目录：**Settings → Data → DeepSeekSync path**（粘贴 DeepSeekSync 目录的
-绝对路径）。此后每日同步会**下载并自动导入**。刷新按钮只更新余额，不会触发同步。
+绝对路径），或使用同一页的 **DeepSeekSync Setup → 自动下载并安装**。此后每日同步会
+**下载并自动导入**。刷新按钮只更新余额，不会触发同步。
 
 安全说明：不读取你正常浏览器的 Cookie、不保存 DeepSeek 用户名与密码、不调用未公开 API。
 
 ## 开发
 
 ```bash
-swift build && swift test        # 核心库 + CLI + 64 个单元测试
+swift build && swift test        # 核心库 + CLI + 80 个单元测试
 .build/debug/apimeter selfcheck  # 端到端自检（钥匙串/数据库/CSV/定价）
 .build/debug/apimeter help
 ```

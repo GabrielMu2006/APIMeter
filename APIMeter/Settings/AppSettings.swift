@@ -50,6 +50,7 @@ public final class AppSettings {
         static let lastSyncResult = "settings.sync.lastResult"
         static let syncToolPath = "settings.sync.toolPath"
         static let lastSyncFailureDay = "settings.sync.lastFailureDay"
+        static let dismissedSyncSetupPrompt = "settings.sync.setupPromptDismissed"
     }
 
     public init(defaults: UserDefaults = .standard) {
@@ -65,6 +66,7 @@ public final class AppSettings {
         self.lastSyncResult = defaults.string(forKey: Keys.lastSyncResult)
         self.syncToolPath = defaults.string(forKey: Keys.syncToolPath)
         self.lastSyncFailureDay = defaults.string(forKey: Keys.lastSyncFailureDay)
+        self.dismissedSyncSetupPrompt = defaults.bool(forKey: Keys.dismissedSyncSetupPrompt)
     }
 
     public var retention: HistoryRetention {
@@ -121,5 +123,11 @@ public final class AppSettings {
     /// timer from retrying a terminal failure the same day (notification spam).
     public var lastSyncFailureDay: String? {
         didSet { defaults.set(lastSyncFailureDay, forKey: Keys.lastSyncFailureDay) }
+    }
+
+    /// True once the user answered the one-click DeepSeekSync setup prompt
+    /// (any choice); stops the launch-time dialog from reappearing.
+    public var dismissedSyncSetupPrompt: Bool {
+        didSet { defaults.set(dismissedSyncSetupPrompt, forKey: Keys.dismissedSyncSetupPrompt) }
     }
 }

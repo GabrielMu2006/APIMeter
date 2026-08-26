@@ -17,6 +17,8 @@ public final class AppState {
     /// (AppDelegate only holds it as a local). A weak reference here would
     /// let it deallocate right after launch (Codex review P0).
     public var syncScheduler: SyncScheduler?
+    /// One-click setup of the DeepSeekSync CLI (launch prompt + Settings UI).
+    public var syncInstaller: DeepSeekSyncInstaller?
     /// Set after creation so AppDelegate and shortcuts can reach the state.
     public nonisolated(unsafe) static var current: AppState?
 

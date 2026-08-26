@@ -164,6 +164,12 @@ A standalone CLI (Node + Playwright) that opens the official usage page in its
 OWN browser profile, clicks the official Export button and downloads the ZIP.
 The app runs it once per day at 00:30 (or at the next launch/wake if missed).
 
+**One-click setup (v1.3.0):** if no path is configured, API Meter asks at launch
+whether to download and install the module for you (source-only archive from
+GitHub, then setup-runtime.sh downloads portable Node + Chromium, ~450MB once,
+then the DeepSeek login window opens automatically). The managed copy lives in
+~/Library/Application Support/APIMeter/DeepSeekSync. Manual steps (also fine):
+
 ```bash
 cd DeepSeekSync
 ./scripts/setup-runtime.sh   # bundles portable Node + installs Playwright + Chromium (no system install)
@@ -176,9 +182,10 @@ cd DeepSeekSync
 ```
 
 Then tell the app where the folder lives: **Settings -> Data -> DeepSeekSync path**
-(paste the absolute path of the DeepSeekSync directory). The daily sync then
-downloads AND imports automatically. The Refresh button only updates the
-balance - it never triggers a sync.
+(paste the absolute path of the DeepSeekSync directory), or use **DeepSeekSync
+Setup -> 自动下载并安装** in the same screen. The daily sync then downloads AND
+imports automatically. The Refresh button only updates the balance - it never
+triggers a sync.
 
 Security notes: it never reads your normal browser's cookies, never stores your
 DeepSeek username or password, and never calls unpublished APIs.
@@ -186,7 +193,7 @@ DeepSeek username or password, and never calls unpublished APIs.
 ## Development
 
 ```bash
-swift build && swift test        # core library + CLI + 64 unit tests
+swift build && swift test        # core library + CLI + 80 unit tests
 .build/debug/apimeter selfcheck  # end-to-end self checks (keychain/db/csv/pricing)
 .build/debug/apimeter help
 ```
