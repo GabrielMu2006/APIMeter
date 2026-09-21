@@ -11,6 +11,8 @@ struct SettingsView: View {
                 .tabItem { Label("General", systemImage: "gearshape") }
             DeepSeekSettingsView(state: state)
                 .tabItem { Label("DeepSeek", systemImage: "wave.3.right") }
+            ZCodeSettingsView(state: state)
+                .tabItem { Label("Coding Plans", systemImage: "chevron.left.forwardslash.chevron.right") }
             APIKeysSettingsView(state: state)
                 .tabItem { Label("API Keys", systemImage: "key") }
             UsageSettingsView(state: state)

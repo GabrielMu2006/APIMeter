@@ -7,11 +7,17 @@ import Observation
 public final class AppState {
     public let environment: AppEnvironment
     public var balanceViewModel: BalanceViewModel
+    public var zcodeQuotaViewModel: ZCodeQuotaViewModel
+    public var kimiQuotaViewModel: KimiQuotaViewModel
+    public var qoderQuotaViewModel: QoderQuotaViewModel
     public var dashboardViewModel: DashboardViewModel
     public var settingsViewModel: SettingsViewModel
     public var selectedDay: LocalDay?
     /// Strong: the controller owns the NSPanel for the app's lifetime.
     public var floatingPanelController: FloatingPanelController?
+    /// Strong: the desktop widget panel (quota + balance cards), owned for
+    /// the app's lifetime like the floating dashboard panel.
+    public var widgetPanelController: WidgetPanelController?
     public weak var refreshCoordinator: RefreshCoordinator?
     /// STRONG: the daily sync scheduler must live for the app's lifetime
     /// (AppDelegate only holds it as a local). A weak reference here would
@@ -25,6 +31,9 @@ public final class AppState {
     public init(environment: AppEnvironment) {
         self.environment = environment
         self.balanceViewModel = BalanceViewModel(environment: environment)
+        self.zcodeQuotaViewModel = ZCodeQuotaViewModel(environment: environment)
+        self.kimiQuotaViewModel = KimiQuotaViewModel(environment: environment)
+        self.qoderQuotaViewModel = QoderQuotaViewModel(environment: environment)
         self.dashboardViewModel = DashboardViewModel(environment: environment)
         self.settingsViewModel = SettingsViewModel(environment: environment)
     }
@@ -39,10 +48,6 @@ public final class AppState {
         floatingPanelController?.toggle()
     }
 
-    public func showMini() {
-        floatingPanelController?.show(mode: .mini)
-    }
-
     public func notePanelShown() {
         refreshCoordinator?.notePanelVisibilityChanged(visible: true)
     }
@@ -51,9 +56,13 @@ public final class AppState {
         refreshCoordinator?.notePanelVisibilityChanged(visible: false)
     }
 
-    /// Refresh everything the UI needs (balance + usage aggregates).
+    /// Refresh everything the UI needs (balance + quotas + usage aggregates).
+    /// All quota refreshes self-throttle to one network call per 5 minutes.
     public func refreshAll() async {
         await balanceViewModel.refresh()
+        await zcodeQuotaViewModel.refresh()
+        await kimiQuotaViewModel.refresh()
+        await qoderQuotaViewModel.refresh()
         await dashboardViewModel.reload()
     }
 }

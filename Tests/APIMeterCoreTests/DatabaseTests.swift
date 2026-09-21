@@ -5,9 +5,9 @@ import APIMeterCore
 
 struct DatabaseTests {
 
-    @Test func migrationV1CreatesSchema() throws {
+    @Test func migrationCreatesSchema() throws {
         let db = try DatabaseManager.ephemeral()
-        #expect(try db.schemaVersion == 1)
+        #expect(try db.schemaVersion == DatabaseManager.currentSchemaVersion)
     }
 
     @Test func upsertAndRowDedup() throws {

@@ -8,7 +8,7 @@ public final class DatabaseManager: Sendable {
     public let path: String
 
     /// Current schema version, mirrored into PRAGMA user_version (spec 102).
-    public static let currentSchemaVersion = 1
+    public static let currentSchemaVersion = 2
 
     public init(path: String) throws {
         self.path = path
@@ -55,6 +55,9 @@ public final class DatabaseManager: Sendable {
         var migrator = DatabaseMigrator()
         migrator.registerMigration("v1_initial") { db in
             try V1Initial.createTables(in: db)
+        }
+        migrator.registerMigration("v2_quota_snapshots") { db in
+            try V2QuotaSnapshots.createTables(in: db)
         }
         return migrator
     }()

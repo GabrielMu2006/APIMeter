@@ -162,3 +162,34 @@ struct PriceRuleRow: Codable, FetchableRecord, MutablePersistableRecord {
         )
     }
 }
+
+/// One metering window of a Coding Plan quota snapshot (migration v2).
+/// modelDetails is stored as a JSON array of {modelCode, usage}.
+struct QuotaSnapshotRow: Codable, FetchableRecord, MutablePersistableRecord {
+    static let databaseTableName = "quota_snapshots"
+    var id: Int64?
+    var timestamp: String
+    var region: String
+    var planLevel: String?
+    var windowKind: String
+    var usedPercent: String?
+    var usedValue: String?
+    var totalValue: String?
+    var remaining: String?
+    var resetsAt: String?
+    var modelDetails: String?
+    var createdAt: String
+
+    enum CodingKeys: String, CodingKey {
+        case id, region, timestamp, remaining
+        case planLevel = "plan_level"
+        case windowKind = "window_kind"
+        case usedPercent = "used_percent"
+        case usedValue = "used_value"
+        case totalValue = "total_value"
+        case resetsAt = "resets_at"
+        case modelDetails = "model_details"
+        case createdAt = "created_at"
+    }
+    mutating func didInsert(_ inserted: InsertionSuccess) { id = inserted.rowID }
+}

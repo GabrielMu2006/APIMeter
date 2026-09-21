@@ -531,6 +531,95 @@ public struct UsageRepository: Sendable {
         }
     }
 
+    // MARK: - Coding Plan quota snapshots
+
+    /// Provider keys stored in quota_snapshots.region (v2 column predates
+    /// multi-provider support; the name stays, the meaning is "provider").
+    public enum QuotaProviderKey {
+        public static let kimi = "kimi"
+        public static let qoder = "qoder"
+    }
+
+    /// Stores every window of a quota snapshot in one write, pruning rows
+    /// older than the v2 retention window so the table stays bounded.
+    public func saveQuotaSnapshot(_ quota: CodingPlanQuota, provider: String) throws {
+        try database.dbQueue.write { db in
+            let timestamp = ISO8601.string(quota.fetchedAt)
+            for window in quota.windows {
+                var row = QuotaSnapshotRow(
+                    id: nil,
+                    timestamp: timestamp,
+                    region: provider,
+                    planLevel: quota.planLevel,
+                    windowKind: window.kind.rawValue,
+                    usedPercent: window.usedPercent.map(DecimalStorage.string),
+                    usedValue: window.usedValue.map(DecimalStorage.string),
+                    totalValue: window.totalValue.map(DecimalStorage.string),
+                    remaining: window.remaining.map(DecimalStorage.string),
+                    resetsAt: window.resetsAt.map(ISO8601.string),
+                    modelDetails: Self.encodeModelDetails(window.modelDetails),
+                    createdAt: timestamp
+                )
+                try row.insert(db)
+            }
+            try V2QuotaSnapshots.applyRetention(in: db)
+        }
+    }
+
+    /// Latest snapshot for the provider, reconstructed into a CodingPlanQuota
+    /// (keeps last successful data on refresh failure, spec 81 pattern).
+    public func latestQuotaSnapshot(provider: String) throws -> CodingPlanQuota? {
+        try database.dbQueue.read { db in
+            guard let ts = try String.fetchOne(db, sql: "SELECT MAX(timestamp) FROM quota_snapshots WHERE region = ?", arguments: [provider]) else {
+                return nil
+            }
+            let rows = try QuotaSnapshotRow
+                .filter(Column("region") == provider)
+                .filter(Column("timestamp") == ts)
+                .order(Column("window_kind"))
+                .fetchAll(db)
+            guard !rows.isEmpty else { return nil }
+            var seenKinds = Set<String>()
+            var windows: [QuotaWindow] = []
+            for row in rows where !seenKinds.contains(row.windowKind) {
+                seenKinds.insert(row.windowKind)
+                windows.append(QuotaWindow(
+                    kind: QuotaWindowKind(rawValue: row.windowKind) ?? .fiveHour,
+                    usedPercent: row.usedPercent.flatMap(DecimalStorage.decimal),
+                    usedValue: row.usedValue.flatMap(DecimalStorage.decimal),
+                    totalValue: row.totalValue.flatMap(DecimalStorage.decimal),
+                    remaining: row.remaining.flatMap(DecimalStorage.decimal),
+                    resetsAt: row.resetsAt.flatMap(ISO8601.date),
+                    modelDetails: Self.decodeModelDetails(row.modelDetails)
+                ))
+            }
+            return CodingPlanQuota(
+                planLevel: rows.first?.planLevel,
+                windows: windows,
+                fetchedAt: ISO8601.date(ts) ?? Date()
+            )
+        }
+    }
+
+    private static func encodeModelDetails(_ details: [QuotaModelDetail]) -> String? {
+        guard !details.isEmpty else { return nil }
+        let payload = details.map { ["modelCode": $0.modelCode, "usage": DecimalStorage.string($0.usage)] }
+        guard let data = try? JSONSerialization.data(withJSONObject: payload) else { return nil }
+        return String(data: data, encoding: .utf8)
+    }
+
+    private static func decodeModelDetails(_ json: String?) -> [QuotaModelDetail] {
+        guard let json, let data = json.data(using: .utf8),
+              let payload = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] else {
+            return []
+        }
+        return payload.compactMap { entry in
+            guard let code = entry["modelCode"] as? String else { return nil }
+            let usage = (entry["usage"] as? String).flatMap(DecimalStorage.decimal) ?? 0
+            return QuotaModelDetail(modelCode: code, usage: usage)
+        }
+    }
+
     // MARK: - Clear
 
     /// Deletes all usage rows but KEEPS import_batches metadata (spec 84),

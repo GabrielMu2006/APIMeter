@@ -19,3 +19,6 @@ apimeter_dev_key*
 # Local artifacts
 docs/samples/
 dist/
+
+# ZCode local workspace state
+.zcode/

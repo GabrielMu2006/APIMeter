@@ -26,12 +26,16 @@ API Meter 是一个本地优先的 macOS 应用，把 DeepSeek 官方数据（�
 
 ## 功能特性
 
-- **菜单栏快捷面板**：余额、今日花费、7 天迷你趋势、Top API Keys，一键打开 Dashboard
-- **悬浮 Dashboard**：指标卡（余额 / 今日 / 期间花费 / 请求数 / Tokens）、7 天 / 30 天 / 本月 / 自定义时间范围、柱状图（悬停显示当天按 Key 明细）、每日历史（点击看当天详情）、API Key 多选筛选
+- **菜单栏快捷面板**：DeepSeek 余额 + 今日一行速览，Coding Plans 圆环（ZCode / Kimi / Qoder）与重置时间，一键打开 Dashboard
+- **悬浮 Dashboard**：DeepSeek / ZCode / Kimi / Qoder 四家等分速览卡、期间统计移至筛选行、柱状图（悬停显示当天按 Key 明细）、每日历史（点击看当天详情）、API Key 多选筛选
+- **桌面小组件**：桌面层级小组件，每家一行（ZCode 5 小时+周窗口、Kimi 5 小时+周窗口、Qoder 月度 credits+组织池、DeepSeek 余额+今日）；拖拽移动、单击打开 Dashboard、右键菜单（快捷键默认 ⌥W）
+- **ZCode（GLM Coding Plan）额度**：5 小时与周窗口的剩余百分比及重置时间，使用与官方 glm-plan-usage 插件相同的配额查询接口；Key 存于独立钥匙串服务，自动刷新限流为每 5 分钟一次
+- **Kimi（Kimi Code）额度**：周与 5 小时窗口，凭据自动检测自 Kimi CLI（~/.kimi-code）；token 过期自动用 refresh token 静默续期（轮换写回 + 血统校验），无需手动跑 CLI
+- **Qoder（国内版）额度**：月度 credits 池（及团队组织资源包，若已分配），自动检测自 Qoder 桌面版加密凭据文件（钥匙串 SafeStorage → AES 解密，只读）；token 有效期约一个月
 - **按 Key 成本**：由官方导出的 `price x amount` 推导，并与账单总额交叉核对；导入采用替换语义，重复导入绝不会重复计费
 - **余额推算今日花费**：今日成本由余额快照推算（昨日基线 − 今日余额，自动识别并忽略充值）；已完成的天以官方导出为准
 - **每日自动同步**：可选 DeepSeekSync 模块每天 00:30 自动下载官方导出（错过则启动/唤醒时补跑）并自动导入
-- **其他**：余额阈值提醒（防轰炸）、开机启动、Dock 图标开关、全局快捷键（默认 ⌥Space）、Pin / Mini 模式、窗口状态记忆、深色/浅色模式、macOS 26 Liquid Glass
+- **其他**：余额阈值提醒（防轰炸）、开机启动、Dock 图标开关、全局快捷键（⌥Space 面板、⌥W 小组件）、窗口状态记忆、深色/浅色模式、macOS 26 Liquid Glass
 
 ## 系统要求
 

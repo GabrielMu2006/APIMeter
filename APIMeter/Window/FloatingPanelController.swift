@@ -3,19 +3,17 @@ import SwiftUI
 
 /// Owns the floating dashboard NSPanel (spec 46-48).
 /// Pin ON -> NSWindow.Level.floating, Pin OFF -> normal (spec 47).
-/// Frame, size, pin and mini state persist across launches.
+/// Frame and pin state persist across launches.
 @MainActor
 public final class FloatingPanelController: NSObject, NSWindowDelegate {
     private var panel: NSPanel?
     private var savedState: WindowState
     private let state: AppState
     private let defaults: UserDefaults
-    private var currentMode: WindowMode = .full
 
-    public enum WindowMode: Sendable {
-        case full
-        case mini
-    }
+    /// Full-mode minimum, kept in sync with DashboardView's min frame so a
+    /// saved (smaller) frame from an older build can never clip the content.
+    private static let fullMinSize = NSSize(width: 940, height: 680)
 
     public init(state: AppState, defaults: UserDefaults = .standard) {
         self.state = state
@@ -25,7 +23,6 @@ public final class FloatingPanelController: NSObject, NSWindowDelegate {
 
     public var isVisible: Bool { panel?.isVisible ?? false }
     public var isPinned: Bool { savedState.pinned }
-    public var mode: WindowMode { currentMode }
 
     public func toggle() {
         if isVisible {
@@ -35,13 +32,10 @@ public final class FloatingPanelController: NSObject, NSWindowDelegate {
         }
     }
 
-    public func show(mode: WindowMode? = nil) {
-        let target = mode ?? (savedState.mini ? WindowMode.mini : .full)
-        Log.info("FloatingPanelController.show(mode: \(target == .full ? "full" : "mini"))")
+    public func show() {
+        Log.info("FloatingPanelController.show()")
         if panel == nil {
-            createPanel(mode: target)
-        } else {
-            setMode(target)
+            createPanel()
         }
         orderFront()
         Log.info("FloatingPanelController: isVisible=\(panel?.isVisible ?? false) frame=\(String(describing: panel?.frame))")
@@ -56,12 +50,6 @@ public final class FloatingPanelController: NSObject, NSWindowDelegate {
     public func togglePin() {
         savedState.pinned.toggle()
         panel?.level = savedState.pinned ? .floating : .normal
-        saveState()
-    }
-
-    public func setMini(_ mini: Bool) {
-        setMode(mini ? .mini : .full)
-        savedState.mini = mini
         saveState()
     }
 
@@ -83,10 +71,21 @@ public final class FloatingPanelController: NSObject, NSWindowDelegate {
         )
     }
 
-    private func createPanel(mode: WindowMode) {
+    private func createPanel() {
+        let contentRect: CGRect
+        if let saved = savedState.frame {
+            // Keep where the user parked it, but never below the content min.
+            contentRect = CGRect(
+                x: saved.origin.x, y: saved.origin.y,
+                width: max(saved.width, Self.fullMinSize.width),
+                height: max(saved.height, Self.fullMinSize.height)
+            )
+        } else {
+            contentRect = defaultFrame
+        }
         let panel = NSPanel(
-            contentRect: savedState.frame ?? defaultFrame,
-            styleMask: mode == .full ? [.titled, .closable, .resizable, .fullSizeContentView] : [.borderless, .nonactivatingPanel],
+            contentRect: contentRect,
+            styleMask: [.titled, .closable, .resizable, .fullSizeContentView],
             backing: .buffered,
             defer: false
         )
@@ -100,57 +99,15 @@ public final class FloatingPanelController: NSObject, NSWindowDelegate {
         panel.titlebarAppearsTransparent = true
         panel.titleVisibility = .visible
         panel.delegate = self
-        panel.contentView = hostingView(for: mode)
-        if mode == .mini {
-            panel.setContentSize(NSSize(width: 260, height: 70))
-        }
+        panel.contentView = hostingView()
+        panel.contentMinSize = Self.fullMinSize
         self.panel = panel
-        self.currentMode = mode
-        Log.info("FloatingPanelController: panel created mode=\(mode == .full ? "full" : "mini") frame=\(panel.frame)")
+        Log.info("FloatingPanelController: panel created frame=\(panel.frame)")
     }
 
-    private func setMode(_ mode: WindowMode) {
-        guard let panel else { return }
-        if mode == currentMode { return }
-        currentMode = mode
-        if mode == .full {
-            panel.styleMask = [.titled, .closable, .resizable, .fullSizeContentView]
-            panel.titlebarAppearsTransparent = true
-            if let frame = savedState.frame {
-                panel.setFrame(frame, display: true)
-            }
-        } else {
-            // Save the full frame before shrinking into mini.
-            saveState()
-            panel.styleMask = [.borderless, .nonactivatingPanel]
-            panel.titlebarAppearsTransparent = false
-        }
-        panel.contentView = hostingView(for: mode)
-        if mode == .mini {
-            panel.setContentSize(NSSize(width: 260, height: 70))
-        } else if let frame = savedState.frame {
-            panel.setFrame(frame, display: true)
-        }
-    }
-
-    private func hostingView(for mode: WindowMode) -> NSView {
-        let root: AnyView
-        switch mode {
-        case .full:
-            root = AnyView(DashboardView(state: state))
-        case .mini:
-            root = AnyView(
-                MiniPanelView(state: state)
-                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
-                    .onTapGesture(count: 2) { self.setMini(false) }
-            )
-        }
-        let hosting = NSHostingView(rootView: root)
-        if mode == .mini {
-            hosting.sizingOptions = [.preferredContentSize]
-        } else {
-            hosting.autoresizingMask = [.width, .height]
-        }
+    private func hostingView() -> NSView {
+        let hosting = NSHostingView(rootView: DashboardView(state: state))
+        hosting.autoresizingMask = [.width, .height]
         return hosting
     }
 
@@ -163,10 +120,9 @@ public final class FloatingPanelController: NSObject, NSWindowDelegate {
     }
 
     private func saveState() {
-        if let frame = panel?.frame, currentMode == .full {
+        if let frame = panel?.frame {
             savedState.frame = frame
         }
-        savedState.mini = (currentMode == .mini)
         savedState.save(to: defaults)
     }
 

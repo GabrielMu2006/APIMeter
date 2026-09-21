@@ -11,54 +11,85 @@ struct DashboardView: View {
         VStack(alignment: .leading, spacing: 12) {
             header
 
-            HStack(spacing: 10) {
-                MetricCard(
-                    title: "Balance",
-                    value: balanceValue,
-                    subtitle: balanceSubtitle,
-                    icon: "yensign.circle"
-                )
-                Button {
-                    let now = LocalDay(date: Date())
-                    if state.dashboardViewModel.summary?.daily.contains(where: { $0.day == now }) == true {
-                        state.selectedDay = now
-                    }
-                } label: {
+            // Equal quarters: DeepSeek | ZCode | Kimi | Qoder, two stacked
+            // cards each, so every provider owns the same footprint.
+            HStack(alignment: .top, spacing: 10) {
+                VStack(spacing: 10) {
                     MetricCard(
-                        title: "Today",
-                        value: todayValue,
-                        subtitle: todaySubtitle,
-                        icon: "sun.max",
-                        tint: .orange
+                        title: "Balance",
+                        value: balanceValue,
+                        subtitle: balanceSubtitle,
+                        icon: "yensign.circle"
+                    )
+                    Button {
+                        let now = LocalDay(date: Date())
+                        if state.dashboardViewModel.summary?.daily.contains(where: { $0.day == now }) == true {
+                            state.selectedDay = now
+                        }
+                    } label: {
+                        MetricCard(
+                            title: "Today",
+                            value: todayValue,
+                            subtitle: todaySubtitle,
+                            icon: "sun.max",
+                            tint: .orange
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .help("Open today's detail")
+                }
+                VStack(spacing: 10) {
+                    ZCodeQuotaCard(
+                        title: "ZCode · 5 小时",
+                        window: state.zcodeQuotaViewModel.quota?.fiveHour,
+                        subtitle: zcodeFiveHourSubtitle
+                    )
+                    ZCodeQuotaCard(
+                        title: "ZCode · 本周",
+                        window: state.zcodeQuotaViewModel.quota?.weekly,
+                        subtitle: zcodeWeeklySubtitle
                     )
                 }
-                .buttonStyle(.plain)
-                .help("Open today's detail")
-                MetricCard(
-                    title: "Period Cost",
-                    value: periodCost,
-                    subtitle: rangeSubtitle,
-                    icon: "sum",
-                    tint: .green
-                )
-                MetricCard(
-                    title: "Requests",
-                    value: state.dashboardViewModel.summary?.requests.map(String.init) ?? "—",
-                    subtitle: "in selected period",
-                    icon: "arrow.left.arrow.right",
-                    tint: .blue
-                )
-                MetricCard(
-                    title: "Tokens",
-                    value: state.dashboardViewModel.summary?.tokens.map(TokenFormatter.compact) ?? "—",
-                    subtitle: state.dashboardViewModel.summary?.tokens.map { TokenFormatter.full($0) } ?? "",
-                    icon: "number",
-                    tint: .purple
-                )
+                VStack(spacing: 10) {
+                    ZCodeQuotaCard(
+                        title: "Kimi · 5 小时",
+                        window: state.kimiQuotaViewModel.quota?.fiveHour,
+                        subtitle: kimiFiveHourSubtitle
+                    )
+                    ZCodeQuotaCard(
+                        title: "Kimi · 本周",
+                        window: state.kimiQuotaViewModel.quota?.weekly,
+                        subtitle: kimiWeeklySubtitle
+                    )
+                }
+                .opacity((state.kimiQuotaViewModel.hasCredential || state.kimiQuotaViewModel.quota != nil) ? 1 : 0.35)
+                VStack(spacing: 10) {
+                    ZCodeQuotaCard(
+                        title: "Qoder · 月度",
+                        window: state.qoderQuotaViewModel.quota?.monthly,
+                        subtitle: qoderPersonalSubtitle
+                    )
+                    ZCodeQuotaCard(
+                        title: "Qoder · 组织池",
+                        window: state.qoderQuotaViewModel.quota?.orgMonthly,
+                        subtitle: state.qoderQuotaViewModel.hasOrgPool
+                            ? qoderOrgSubtitle
+                            : "组织池未开放"
+                    )
+                }
+                .opacity((state.qoderQuotaViewModel.hasCredential || state.qoderQuotaViewModel.quota != nil) ? 1 : 0.35)
             }
 
             HStack {
                 DateRangePicker(viewModel: state.dashboardViewModel)
+                Spacer()
+                // Period stats live beside the filters now - the summary
+                // row belongs to the three providers.
+                Text(periodCost + (periodStatsSubtitle.isEmpty ? "" : " · " + periodStatsSubtitle))
+                    .font(.callout.weight(.medium))
+                    .monospacedDigit()
+                    .foregroundStyle(.secondary)
+                    .help("Period cost with requests and tokens for the selected range")
                 APIKeyFilter(viewModel: state.dashboardViewModel)
             }
 
@@ -88,7 +119,7 @@ struct DashboardView: View {
             .frame(maxHeight: .infinity)
         }
         .padding(16)
-        .frame(minWidth: 780, minHeight: 560)
+        .frame(minWidth: 940, minHeight: 680)
         .apiMeterAppearance(state.environment.settings.appearance)
         .task {
             await state.refreshAll()
@@ -118,12 +149,6 @@ struct DashboardView: View {
                 Image(systemName: state.floatingPanelController?.isPinned == true ? "pin.fill" : "pin")
             }
             .help("Pin keeps the window floating above others")
-            Button {
-                state.floatingPanelController?.setMini(true)
-            } label: {
-                Image(systemName: "rectangle.compress.vertical")
-            }
-            .help("Switch to Mini mode")
             Button {
                 openSettings()
             } label: {
@@ -156,8 +181,8 @@ struct DashboardView: View {
     }
 
     private var balanceSubtitle: String {
-        if let error = state.balanceViewModel.lastError {
-            return "Unable to refresh - showing last good value"
+        if state.balanceViewModel.lastError != nil {
+            return "Refresh failed · last good value"
         }
         return state.balanceViewModel.hasStoredKey ? "DeepSeek account" : "Add a key in Settings"
     }
@@ -167,35 +192,97 @@ struct DashboardView: View {
     }
 
     private var todaySubtitle: String {
-        var parts: [String] = []
-        parts.append(state.dashboardViewModel.todayDisplaySubtitle)
+        // Compact: source label only - requests/tokens live in the daily
+        // list and the day detail; the updated time is in the header line.
         if state.dashboardViewModel.todayBalanceEstimate != nil {
-            if let fetchedAt = state.balanceViewModel.balance?.fetchedAt {
-                parts.append("updated " + fetchedAt.formatted(date: .omitted, time: .shortened))
-            }
-        } else if let today = state.dashboardViewModel.today {
-            var source = "Official export"
-            if let imported = state.dashboardViewModel.latestImportAt {
-                source += " · imported " + imported.formatted(date: .omitted, time: .shortened)
-            }
-            parts.append(source)
-        } else {
-            parts.append("no data yet")
+            return "Balance-derived"
         }
-        if let today = state.dashboardViewModel.today {
-            if let requests = today.requests { parts.append(String(requests) + " requests") }
-            if let tokens = today.tokens { parts.append(TokenFormatter.compact(tokens) + " tokens") }
+        if let partial = state.dashboardViewModel.todayPartialEstimate {
+            return "Since " + partial.since.formatted(date: .omitted, time: .shortened)
         }
-        return parts.joined(separator: " · ")
+        if state.dashboardViewModel.today != nil {
+            return "Official export"
+        }
+        return "no data yet"
     }
 
     private var periodCost: String {
         state.dashboardViewModel.summary?.cost.map { CurrencyFormatter.format($0, currency: "CNY") } ?? "—"
     }
 
-    private var rangeSubtitle: String {
-        let (start, end) = state.dashboardViewModel.range
-        return start.value + " .. " + end.value
+    private var zcodeWeeklySubtitle: String {
+        var parts: [String] = []
+        if let level = state.zcodeQuotaViewModel.quota?.planLevel {
+            parts.append(level.capitalized)
+        }
+        if let resetsAt = state.zcodeQuotaViewModel.quota?.weekly?.resetsAt {
+            parts.append("重置 " + ZCodeQuotaSection.resetStamp(resetsAt))
+        }
+        return parts.isEmpty ? "" : parts.joined(separator: " · ")
+    }
+
+    private var zcodeFiveHourSubtitle: String {
+        state.zcodeQuotaViewModel.resetsIn(state.zcodeQuotaViewModel.quota?.fiveHour)
+            .map { "◔ " + $0 + " 后重置" } ?? ""
+    }
+
+    private var kimiFiveHourSubtitle: String {
+        state.kimiQuotaViewModel.resetsIn(state.kimiQuotaViewModel.quota?.fiveHour)
+            .map { "◔ " + $0 + " 后重置" } ?? ""
+    }
+
+    private var qoderPersonalSubtitle: String {
+        let qoder = state.qoderQuotaViewModel
+        if qoder.quota == nil {
+            return qoder.hasCredential ? "Loading..." : "Open the Qoder app once"
+        }
+        var parts: [String] = []
+        if let remaining = qoder.quota?.monthly?.effectiveRemaining {
+            parts.append("剩 " + QuotaWidgetCard.remainingText(remaining) + " credits")
+        }
+        if let resetsAt = qoder.quota?.monthly?.resetsAt {
+            parts.append("重置 " + ZCodeQuotaSection.resetStamp(resetsAt))
+        }
+        return parts.isEmpty ? "" : parts.joined(separator: " · ")
+    }
+
+    private var qoderOrgSubtitle: String {
+        var parts: [String] = []
+        if let remaining = state.qoderQuotaViewModel.quota?.orgMonthly?.effectiveRemaining {
+            parts.append("剩 " + QuotaWidgetCard.remainingText(remaining) + " credits")
+        }
+        if let resetsAt = state.qoderQuotaViewModel.quota?.orgMonthly?.resetsAt {
+            parts.append("重置 " + ZCodeQuotaSection.resetStamp(resetsAt))
+        }
+        return parts.isEmpty ? "" : parts.joined(separator: " · ")
+    }
+
+    private var kimiWeeklySubtitle: String {
+        let kimi = state.kimiQuotaViewModel
+        if kimi.quota == nil {
+            return kimi.hasCredential ? "Loading..." : "Run the Kimi CLI once"
+        }
+        var parts: [String] = []
+        if let level = kimi.quota?.planLevel {
+            parts.append(level)
+        }
+        if let resetsAt = kimi.quota?.weekly?.resetsAt {
+            parts.append("重置 " + ZCodeQuotaSection.resetStamp(resetsAt))
+        }
+        return parts.isEmpty ? "" : parts.joined(separator: " · ")
+    }
+
+    private var periodStatsSubtitle: String {
+        // Requests and tokens for the selected range - shown compactly next
+        // to the filters.
+        var parts: [String] = []
+        if let requests = state.dashboardViewModel.summary?.requests {
+            parts.append(TokenFormatter.compact(requests) + " req")
+        }
+        if let tokens = state.dashboardViewModel.summary?.tokens {
+            parts.append(TokenFormatter.compact(tokens) + " tok")
+        }
+        return parts.joined(separator: " · ")
     }
 }
 

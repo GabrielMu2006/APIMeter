@@ -16,7 +16,7 @@ struct AppearanceSettingsView: View {
                     Text("Dark").tag(AppearanceMode.dark)
                 }
                 .pickerStyle(.radioGroup)
-                Text("On macOS 26 the toolbar, filter controls and mini panel use Liquid Glass.")
+                Text("On macOS 26 the toolbar and filter controls use Liquid Glass.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

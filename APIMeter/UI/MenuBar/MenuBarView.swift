@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// Quick panel (spec 33): balance, today, 7-day mini trend, top keys,
-/// refresh, open dashboard - nothing more.
+/// Quick panel (spec 33): DeepSeek balance/today in one row, the coding
+/// plan rings (ZCode + Kimi), then dashboard entry - nothing more.
 struct MenuBarView: View {
     @Bindable var state: AppState
     @Environment(\.openSettings) private var openSettings
@@ -24,15 +24,8 @@ struct MenuBarView: View {
                 }
             }
 
-            BalanceSection(state: state)
-            TodaySection(state: state)
-
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Last 7 Days").font(.caption).foregroundStyle(.secondary)
-                MiniTrendChart(daily: last7Days)
-            }
-
-            TopKeysSection(state: state)
+            DeepSeekSection(state: state)
+            ZCodeQuotaSection(state: state)
 
             Divider()
 
@@ -58,116 +51,205 @@ struct MenuBarView: View {
             await state.refreshAll()
         }
     }
-
-    private var last7Days: [DailyUsage] {
-        let today = LocalDay(date: Date())
-        let cutoff = today.adding(days: -6)
-        return (state.dashboardViewModel.summary?.daily ?? []).filter { $0.day >= cutoff && $0.day <= today }
-    }
 }
 
-struct BalanceSection: View {
+/// DeepSeek glance in a single row: balance and today side by side, with
+/// the last-updated stamp right-aligned.
+struct DeepSeekSection: View {
     @Bindable var state: AppState
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text("Balance").font(.caption).foregroundStyle(.secondary)
-            if let info = state.balanceViewModel.balance?.balanceInfos.first {
-                Text(CurrencyFormatter.format(info.totalBalance, currency: info.currency))
-                    .font(.system(size: 24, weight: .semibold, design: .rounded))
-                    .monospacedDigit()
-                if let error = state.balanceViewModel.lastError {
-                    HStack(spacing: 3) {
-                        Image(systemName: "exclamationmark.triangle.fill").font(.caption2)
-                        Text("Unable to refresh").font(.caption2)
-                    }
-                    .foregroundStyle(.orange)
-                    .help(error)
-                }
-                if let fetchedAt = state.balanceViewModel.balance?.fetchedAt {
-                    Text("Last updated " + fetchedAt.formatted(date: .omitted, time: .shortened))
-                        .font(.caption2)
-                        .foregroundStyle(.tertiary)
-                }
-            } else {
-                Text("—").font(.system(size: 24, weight: .semibold, design: .rounded))
-                Text(state.balanceViewModel.hasStoredKey ? "Loading..." : "Add a key in Settings")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-            }
-        }
-    }
-}
-
-struct TodaySection: View {
-    @Bindable var state: AppState
-
-    var body: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Today").font(.caption).foregroundStyle(.secondary)
-                if let cost = state.dashboardViewModel.todayDisplayCost {
-                    Text(CurrencyFormatter.format(cost, currency: "CNY"))
-                        .font(.system(size: 20, weight: .semibold, design: .rounded))
-                        .monospacedDigit()
-                } else {
-                    Text("—").font(.system(size: 20, weight: .semibold, design: .rounded))
-                }
-            }
-            Spacer()
-            VStack(alignment: .trailing, spacing: 2) {
-                Text("Requests").font(.caption).foregroundStyle(.secondary)
-                Text(state.dashboardViewModel.today?.requests.map(String.init) ?? "—")
-                    .font(.callout)
-                    .monospacedDigit()
-            }
-            VStack(alignment: .trailing, spacing: 2) {
-                Text("Tokens").font(.caption).foregroundStyle(.secondary)
-                Text(state.dashboardViewModel.today?.tokens.map(TokenFormatter.compact) ?? "—")
-                    .font(.callout)
-                    .monospacedDigit()
-            }
-        }
-    }
-}
-
-struct TopKeysSection: View {
-    @Bindable var state: AppState
-
-    private var topKeys: [APIKeyUsage] {
-        let keys = state.dashboardViewModel.summary?.byAPIKey ?? []
-        return Array(keys.sorted { ($0.tokens ?? 0) > ($1.tokens ?? 0) }.prefix(3))
-    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text("Top API Keys").font(.caption).foregroundStyle(.secondary)
-            if topKeys.isEmpty {
-                Text("No key data yet").font(.caption).foregroundStyle(.tertiary)
-            } else {
-                ForEach(topKeys) { key in
-                    HStack {
-                        Text(displayName(for: key))
-                            .lineLimit(1)
-                        Spacer()
-                        Text(key.cost.map { CurrencyFormatter.format($0, currency: "CNY") } ?? "—")
-                            .monospacedDigit()
-                            .foregroundStyle(key.cost == nil ? .tertiary : .primary)
-                        Text(key.tokens.map(TokenFormatter.compact) ?? "")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+            HStack(spacing: 4) {
+                Text("DeepSeek").font(.caption).foregroundStyle(.secondary)
+                if state.balanceViewModel.lastError != nil {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .font(.caption2)
+                        .foregroundStyle(.orange)
+                        .help(state.balanceViewModel.lastError ?? "")
+                }
+            }
+            HStack(alignment: .bottom, spacing: 22) {
+                metric(
+                    caption: "余额",
+                    value: state.balanceViewModel.balance?.balanceInfos.first.map {
+                        CurrencyFormatter.format($0.totalBalance, currency: $0.currency)
+                    },
+                    size: 27,
+                    tint: .blue
+                )
+                metric(
+                    caption: "今日",
+                    value: state.dashboardViewModel.todayDisplayCost.map {
+                        CurrencyFormatter.format($0, currency: "CNY")
+                    },
+                    size: 19
+                )
+                Spacer(minLength: 0)
+                VStack(alignment: .trailing, spacing: 2) {
+                    if let fetchedAt = state.balanceViewModel.balance?.fetchedAt {
+                        Text("更新 " + fetchedAt.formatted(date: .omitted, time: .shortened))
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
+                    }
+                    if let requests = state.dashboardViewModel.today?.requests {
+                        Text(String(requests) + " req")
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
                             .monospacedDigit()
                     }
-                    .font(.callout)
                 }
             }
         }
     }
 
-    private func displayName(for usage: APIKeyUsage) -> String {
-        if let key = state.dashboardViewModel.apiKeys.first(where: { $0.fingerprint == usage.fingerprint }) {
-            return key.bestDisplayName
+    @ViewBuilder
+    private func metric(caption: String, value: String?, size: CGFloat = 19, tint: Color = .primary) -> some View {
+        VStack(alignment: .leading, spacing: 1) {
+            Text(caption).font(.caption2).foregroundStyle(.secondary)
+            if let value {
+                Text(value)
+                    .font(.system(size: size, weight: .semibold, design: .rounded))
+                    .monospacedDigit()
+                    .foregroundStyle(tint)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
+            } else {
+                Text("—")
+                    .font(.system(size: size, weight: .semibold, design: .rounded))
+                    .foregroundStyle(tint)
+            }
         }
-        return KeyFingerprint.displayPrefix(usage.fingerprint, length: 8) + "..."
     }
 }
+
+/// Coding-plan quotas in the quick panel: depleting rings for ZCode
+/// (5-hour / weekly) and, when the Kimi CLI credential is detected, Kimi's
+/// windows, with the remaining percentage in the center.
+struct ZCodeQuotaSection: View {
+    @Bindable var state: AppState
+
+    private var showKimi: Bool {
+        state.kimiQuotaViewModel.hasCredential || state.kimiQuotaViewModel.quota != nil
+    }
+
+    private var showQoder: Bool {
+        state.qoderQuotaViewModel.hasCredential || state.qoderQuotaViewModel.quota != nil
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Text("Coding Plans").font(.caption).foregroundStyle(.secondary)
+                Spacer()
+                if let level = state.zcodeQuotaViewModel.quota?.planLevel {
+                    Text("ZCode " + level.capitalized).font(.caption2).foregroundStyle(.tertiary)
+                }
+            }
+            if state.zcodeQuotaViewModel.quota != nil || showKimi || showQoder {
+                // Grid keeps the two ring columns aligned across rows even
+                // when the label widths differ.
+                Grid(alignment: .leading, horizontalSpacing: 14, verticalSpacing: 8) {
+                    if let quota = state.zcodeQuotaViewModel.quota {
+                        GridRow {
+                            QuotaRingBlock(
+                                window: quota.fiveHour,
+                                title: "ZCode 5 小时",
+                                subtitle: state.zcodeQuotaViewModel.resetsIn(quota.fiveHour).map { "◔ " + $0 }
+                            )
+                            QuotaRingBlock(
+                                window: quota.weekly,
+                                title: "ZCode 本周",
+                                subtitle: quota.weekly?.resetsAt.map { "重置 " + Self.resetStamp($0) }
+                            )
+                        }
+                    }
+                    if showKimi {
+                        GridRow {
+                            QuotaRingBlock(
+                                window: state.kimiQuotaViewModel.quota?.fiveHour,
+                                title: "Kimi 5 小时",
+                                subtitle: state.kimiQuotaViewModel.resetsIn(state.kimiQuotaViewModel.quota?.fiveHour).map { "◔ " + $0 }
+                            )
+                            QuotaRingBlock(
+                                window: state.kimiQuotaViewModel.quota?.weekly,
+                                title: "Kimi 本周",
+                                subtitle: kimiWeeklySubtitle
+                            )
+                        }
+                    }
+                    if showQoder {
+                        GridRow {
+                            QuotaRingBlock(
+                                window: state.qoderQuotaViewModel.quota?.monthly,
+                                title: "Qoder 月度",
+                                subtitle: qoderPersonalSubtitle
+                            )
+                            QuotaRingBlock(
+                                window: state.qoderQuotaViewModel.quota?.orgMonthly,
+                                title: "Qoder 组织",
+                                subtitle: state.qoderQuotaViewModel.hasOrgPool
+                                    ? state.qoderQuotaViewModel.quota?.orgMonthly?.resetsAt.map { "重置 " + Self.resetStamp($0) }
+                                    : "组织池未开放"
+                            )
+                        }
+                    }
+                }
+            } else if state.zcodeQuotaViewModel.hasStoredKey {
+                Text("Loading...")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            } else {
+                Text("Add a key in Settings → Coding Plans")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+            if let error = state.zcodeQuotaViewModel.lastError {
+                HStack(spacing: 3) {
+                    Image(systemName: "exclamationmark.triangle.fill").font(.caption2)
+                    Text("ZCode: unable to refresh").font(.caption2)
+                }
+                .foregroundStyle(.orange)
+                .help(error)
+            }
+            if let error = state.kimiQuotaViewModel.lastError {
+                HStack(spacing: 3) {
+                    Image(systemName: "exclamationmark.triangle.fill").font(.caption2)
+                    Text("Kimi: 凭据失效，请运行 kimi login").font(.caption2)
+                }
+                .foregroundStyle(.orange)
+                .help(error)
+            }
+        }
+    }
+
+    /// Compact weekly reset stamp, e.g. "周四 06:56" / "Thu 06:56".
+    static func resetStamp(_ date: Date) -> String {
+        date.formatted(.dateTime.weekday(.abbreviated).hour().minute())
+    }
+
+    private var kimiWeeklySubtitle: String? {
+        let kimi = state.kimiQuotaViewModel
+        var parts: [String] = []
+        if let level = kimi.quota?.planLevel {
+            parts.append(level)
+        }
+        if let resetsAt = kimi.quota?.weekly?.resetsAt {
+            parts.append("重置 " + Self.resetStamp(resetsAt))
+        }
+        return parts.isEmpty ? nil : parts.joined(separator: " · ")
+    }
+
+    private var qoderPersonalSubtitle: String? {
+        let qoder = state.qoderQuotaViewModel
+        var parts: [String] = []
+        if let remaining = qoder.quota?.monthly?.effectiveRemaining {
+            parts.append("剩 " + QuotaWidgetCard.remainingText(remaining))
+        }
+        if let resetsAt = qoder.quota?.monthly?.resetsAt {
+            parts.append("重置 " + Self.resetStamp(resetsAt))
+        }
+        return parts.isEmpty ? nil : parts.joined(separator: " · ")
+    }
+}
+

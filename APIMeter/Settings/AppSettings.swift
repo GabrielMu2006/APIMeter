@@ -51,6 +51,8 @@ public final class AppSettings {
         static let syncToolPath = "settings.sync.toolPath"
         static let lastSyncFailureDay = "settings.sync.lastFailureDay"
         static let dismissedSyncSetupPrompt = "settings.sync.setupPromptDismissed"
+        static let zcodeRegion = "settings.zcode.region"
+        static let showDesktopWidgets = "settings.widgets.showDesktop"
     }
 
     public init(defaults: UserDefaults = .standard) {
@@ -67,6 +69,8 @@ public final class AppSettings {
         self.syncToolPath = defaults.string(forKey: Keys.syncToolPath)
         self.lastSyncFailureDay = defaults.string(forKey: Keys.lastSyncFailureDay)
         self.dismissedSyncSetupPrompt = defaults.bool(forKey: Keys.dismissedSyncSetupPrompt)
+        self.zcodeRegion = defaults.string(forKey: Keys.zcodeRegion).flatMap(ZCodeRegion.init(rawValue:)) ?? .bigmodelCN
+        self.showDesktopWidgets = defaults.bool(forKey: Keys.showDesktopWidgets)
     }
 
     public var retention: HistoryRetention {
@@ -129,5 +133,17 @@ public final class AppSettings {
     /// (any choice); stops the launch-time dialog from reappearing.
     public var dismissedSyncSetupPrompt: Bool {
         didSet { defaults.set(dismissedSyncSetupPrompt, forKey: Keys.dismissedSyncSetupPrompt) }
+    }
+
+    /// Which Z.ai/BigModel deployment the Coding Plan key belongs to.
+    public var zcodeRegion: ZCodeRegion {
+        didSet {
+            defaults.set(zcodeRegion.rawValue, forKey: Keys.zcodeRegion)
+        }
+    }
+
+    /// Show the desktop widget panel (ZCode quota + DeepSeek cards).
+    public var showDesktopWidgets: Bool {
+        didSet { defaults.set(showDesktopWidgets, forKey: Keys.showDesktopWidgets) }
     }
 }

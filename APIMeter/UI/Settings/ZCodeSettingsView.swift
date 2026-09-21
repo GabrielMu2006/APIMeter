@@ -1,0 +1,274 @@
+import SwiftUI
+
+/// ZCode (Zhipu Coding Plan) key management + quota status. Mirrors the
+/// DeepSeek tab: raw key never shown after saving, only the fingerprint.
+struct ZCodeSettingsView: View {
+    @Bindable var state: AppState
+
+    var body: some View {
+        Form {
+            Section("Coding Plan API Key") {
+                if state.zcodeQuotaViewModel.hasStoredKey == false {
+                    SecureField("Paste your Coding Plan API key", text: $state.settingsViewModel.zcodeKeyInput)
+                        .onSubmit {
+                            Task {
+                                await state.settingsViewModel.saveZCodeKey()
+                                await state.zcodeQuotaViewModel.refresh(force: true)
+                            }
+                        }
+                    Button("Save to Keychain") {
+                        Task {
+                            await state.settingsViewModel.saveZCodeKey()
+                            await state.zcodeQuotaViewModel.refresh(force: true)
+                        }
+                    }
+                    Text("Create the key in the BigModel / Z.ai console (Coding Plan section) and paste it here. It is stored only in the macOS Keychain, never in the database or logs.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                } else {
+                    LabeledContent("Stored key") {
+                        HStack(spacing: 6) {
+                            Text("••••••••" + KeyFingerprint.displayPrefix(state.zcodeQuotaViewModel.activeFingerprint ?? "", length: 4))
+                                .monospaced()
+                                .foregroundStyle(.secondary)
+                            Button("Remove") {
+                                Task {
+                                    await state.settingsViewModel.removeZCodeKey()
+                                    await state.zcodeQuotaViewModel.refresh(force: true)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            Section("Region") {
+                Picker("Account region", selection: Binding(
+                    get: { state.environment.settings.zcodeRegion },
+                    set: { newValue in
+                        state.environment.settings.zcodeRegion = newValue
+                        state.zcodeQuotaViewModel.resetThrottle()
+                        Task { await state.zcodeQuotaViewModel.refresh(force: true) }
+                    }
+                )) {
+                    ForEach(ZCodeRegion.allCases) { region in
+                        Text(region.displayName).tag(region)
+                    }
+                }
+                .pickerStyle(.radioGroup)
+                Text("BigModel (China) uses open.bigmodel.cn; Z.ai (Global) uses api.z.ai. The key is region-bound.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Section("Quota") {
+                HStack {
+                    Button("Test Connection") {
+                        Task {
+                            await state.settingsViewModel.testZCodeConnection()
+                            await state.zcodeQuotaViewModel.refresh(force: true)
+                        }
+                    }
+                    if let quota = state.settingsViewModel.zcodeQuota ?? state.zcodeQuotaViewModel.quota {
+                        Text("Last fetch " + quota.fetchedAt.formatted(date: .omitted, time: .shortened))
+                            .font(.caption)
+                            .foregroundStyle(.tertiary)
+                    }
+                }
+                if let quota = state.settingsViewModel.zcodeQuota ?? state.zcodeQuotaViewModel.quota {
+                    LabeledContent("Plan") { Text(quota.planLevel?.capitalized ?? "—") }
+                    quotaRow(label: "5-hour window", window: quota.fiveHour)
+                    quotaRow(label: "Weekly window", window: quota.weekly)
+                } else {
+                    Text("No quota fetched yet. Save a key and click Test Connection.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                if let error = state.zcodeQuotaViewModel.lastError {
+                    Text(error)
+                        .font(.caption)
+                        .foregroundStyle(.orange)
+                        .textSelection(.enabled)
+                }
+                if let message = state.settingsViewModel.zcodeStatusMessage {
+                    Text(message)
+                        .font(.caption)
+                        .foregroundStyle(message.hasPrefix("Failed") || message.hasPrefix("Connection failed") ? .red : .secondary)
+                        .textSelection(.enabled)
+                }
+            }
+
+            Section("Kimi (auto-detected)") {
+                switch state.kimiQuotaViewModel.credentialState {
+                case .available:
+                    LabeledContent("Credential") {
+                        Text("Kimi CLI token detected")
+                            .foregroundStyle(.secondary)
+                    }
+                    LabeledContent("Refresh") {
+                        Text("Automatic - expired tokens refresh in the background")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                case .expired:
+                    LabeledContent("Credential") {
+                        Text("凭据已失效 - 请运行 kimi login 重新登录")
+                            .foregroundStyle(.orange)
+                    }
+                case .missing:
+                    LabeledContent("Credential") {
+                        Text("Not found - install/log in to the Kimi CLI (~/.kimi-code)")
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                HStack {
+                    Button("Test Connection") {
+                        Task { await state.kimiQuotaViewModel.refresh(force: true) }
+                    }
+                    if let quota = state.kimiQuotaViewModel.quota {
+                        Text("Last fetch " + quota.fetchedAt.formatted(date: .omitted, time: .shortened))
+                            .font(.caption)
+                            .foregroundStyle(.tertiary)
+                    }
+                }
+                if let quota = state.kimiQuotaViewModel.quota {
+                    LabeledContent("Plan") { Text(quota.planLevel ?? "—") }
+                    LabeledContent("Windows") {
+                        Text("5-hour and weekly (7d); no monthly limit")
+                            .foregroundStyle(.secondary)
+                    }
+                    if let weekly = quota.weekly {
+                        LabeledContent("Weekly") {
+                            Text("剩 " + (weekly.remainingPercent.map(QuotaWidgetCard.percentText) ?? "—"))
+                                .monospacedDigit()
+                        }
+                    }
+                    if let fiveHour = quota.fiveHour {
+                        LabeledContent("5-hour") {
+                            Text("剩 " + (fiveHour.remainingPercent.map(QuotaWidgetCard.percentText) ?? "—"))
+                                .monospacedDigit()
+                        }
+                    }
+                }
+                if let error = state.kimiQuotaViewModel.lastError {
+                    Text(error)
+                        .font(.caption)
+                        .foregroundStyle(.orange)
+                        .textSelection(.enabled)
+                }
+            }
+
+            Section("Qoder (auto-detected)") {
+                switch state.qoderQuotaViewModel.credentialState {
+                case .available(let credential):
+                    LabeledContent("Credential") {
+                        Text("Qoder CN token detected" + (credential.accountLabel.map { " · " + $0 } ?? ""))
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
+                    LabeledContent("Token expiry") {
+                        Text(credential.expiresAt.map { "有效期至 " + $0.formatted(date: .abbreviated, time: .omitted) } ?? "—")
+                            .foregroundStyle(.secondary)
+                    }
+                case .expired:
+                    LabeledContent("Credential") {
+                        Text("凭据已过期 - 请在 Qoder 桌面版重新登录")
+                            .foregroundStyle(.orange)
+                    }
+                case .missing:
+                    LabeledContent("Credential") {
+                        Text("未找到 - 安装并登录 Qoder 桌面版")
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                HStack {
+                    Button("Test Connection") {
+                        Task { await state.qoderQuotaViewModel.refresh(force: true) }
+                    }
+                    if let quota = state.qoderQuotaViewModel.quota {
+                        Text("Last fetch " + quota.fetchedAt.formatted(date: .omitted, time: .shortened))
+                            .font(.caption)
+                            .foregroundStyle(.tertiary)
+                    }
+                }
+                if let quota = state.qoderQuotaViewModel.quota {
+                    if let personal = quota.monthly {
+                        LabeledContent("个人池") {
+                            Text("剩 " + (personal.effectiveRemaining.map(QuotaWidgetCard.remainingText) ?? "—")
+                                + " / " + (personal.totalValue.map(QuotaWidgetCard.remainingText) ?? "—") + " credits")
+                                .monospacedDigit()
+                        }
+                    }
+                    if let org = quota.orgMonthly {
+                        LabeledContent("组织池") {
+                            Text("剩 " + (org.effectiveRemaining.map(QuotaWidgetCard.remainingText) ?? "—") + " credits")
+                                .monospacedDigit()
+                        }
+                    } else {
+                        LabeledContent("组织池") {
+                            Text("未开放")
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+                if let error = state.qoderQuotaViewModel.lastError {
+                    Text(error)
+                        .font(.caption)
+                        .foregroundStyle(.orange)
+                        .textSelection(.enabled)
+                }
+            }
+
+            Section("Desktop Widgets") {
+                Toggle("Show on Desktop", isOn: Binding(
+                    get: { state.environment.settings.showDesktopWidgets },
+                    set: { enabled in
+                        state.environment.settings.showDesktopWidgets = enabled
+                        if enabled {
+                            state.widgetPanelController?.show()
+                        } else {
+                            state.widgetPanelController?.hide()
+                        }
+                    }
+                ))
+                Text("Floating widget cards at desktop level: ZCode 5-hour and weekly quota plus the DeepSeek balance. Drag to move; right-click for actions.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .formStyle(.grouped)
+        .padding(12)
+    }
+
+    @ViewBuilder
+    private func quotaRow(label: String, window: QuotaWindow?) -> some View {
+        if let window {
+            LabeledContent(label) {
+                HStack(spacing: 8) {
+                    if let remaining = window.effectiveRemaining {
+                        Text("剩 " + QuotaWidgetCard.remainingText(remaining)).monospacedDigit()
+                    } else {
+                        Text("—")
+                    }
+                    if let remaining = window.effectiveRemaining, let total = window.totalValue {
+                        Text("/ " + QuotaWidgetCard.remainingText(total))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .monospacedDigit()
+                    }
+                    if let percent = window.remainingPercent {
+                        Text("剩 " + QuotaWidgetCard.percentText(percent))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .monospacedDigit()
+                    }
+                    if let resetsAt = window.resetsAt {
+                        Text("resets " + resetsAt.formatted(date: .abbreviated, time: .omitted))
+                            .font(.caption)
+                            .foregroundStyle(.tertiary)
+                    }
+                }
+            }
+        }
+    }
+}

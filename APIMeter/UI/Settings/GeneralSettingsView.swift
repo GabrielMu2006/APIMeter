@@ -37,7 +37,28 @@ struct GeneralSettingsView: View {
                     Spacer()
                     KeyboardShortcuts.Recorder(for: .toggleDashboard)
                 }
-                Text("Default: Option + Space. The shortcut shows or hides the dashboard.")
+                HStack {
+                    Text("Toggle Desktop Widgets")
+                    Spacer()
+                    KeyboardShortcuts.Recorder(for: .toggleWidgets)
+                }
+                Text("Dashboard: Option + Space. Widgets: Option + W. Both are changeable here.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Section("Desktop Widgets") {
+                Toggle("Show Desktop Widgets", isOn: Binding(
+                    get: { state.environment.settings.showDesktopWidgets },
+                    set: { enabled in
+                        state.environment.settings.showDesktopWidgets = enabled
+                        if enabled {
+                            state.widgetPanelController?.show()
+                        } else {
+                            state.widgetPanelController?.hide()
+                        }
+                    }
+                ))
+                Text("Floating cards at desktop level: ZCode quota windows and the DeepSeek balance. Configure the ZCode key in Settings > ZCode.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

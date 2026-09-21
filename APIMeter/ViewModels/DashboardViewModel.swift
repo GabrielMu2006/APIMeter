@@ -55,7 +55,7 @@ public final class DashboardViewModel {
         }
     }
 
-    /// The cost shown on the Today card everywhere (menu bar, dashboard, mini):
+    /// The cost shown on the Today card everywhere (menu bar, dashboard):
     /// full balance-delta -> partial (since first snapshot) -> official fallback.
     public var todayDisplayCost: Decimal? {
         if let estimate = todayBalanceEstimate { return estimate.amount }

@@ -19,7 +19,16 @@ UI (SwiftUI: MenuBar / Dashboard / MiniPanel / Settings)
 2. DeepSeek Balance API - current balance; snapshots stored on every refresh.
    Today's cost is a balance-delta estimate (yesterday's last baseline minus
    today, ignoring increases as top-ups; 24h baseline guard).
-3. Optional DeepSeekSync module - Playwright-based downloader of the official
+3. Coding Plan quota monitors - ZCode/Zhipu (GET /api/monitor/usage/quota/limit,
+   the endpoint behind the official glm-plan-usage plugin; key in its own
+   Keychain service), Kimi Code (GET /api.kimi.com/coding/v1/usages; credential
+   auto-detected from ~/.kimi-code, expired tokens self-refresh with the stored
+   refresh token, rotated tokens written back lineage-checked) and Qoder CN
+   (GET openapi.qoder.com.cn/api/v2/quota/usage; credential decrypted read-only
+   from the desktop app's SafeStorage auth file). Quota snapshots per provider
+   kept 30 days (schema v2), automatic refresh throttled to one call per
+   5 minutes per provider.
+4. Optional DeepSeekSync module - Playwright-based downloader of the official
    export, scheduled once per day at 00:30 by the app; stores its session in
    the Keychain, never credentials.
 

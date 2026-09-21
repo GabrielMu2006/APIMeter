@@ -8,13 +8,18 @@ import UniformTypeIdentifiers
 @Observable
 public final class SettingsViewModel {
     public var apiKeyInput = ""
+    /// Input for the ZCode / Coding Plan key (separate Keychain service).
+    public var zcodeKeyInput = ""
     public var statusMessage: String?
+    public var zcodeStatusMessage: String?
     public var importMessage: String?
     public var isImporting = false
     public var importedBatches: [ImportBatch] = []
     public var apiKeys: [APIKey] = []
     public var databaseSizeBytes: Int64 = 0
     public var balance: Balance?
+    /// Last fetched quota (for the ZCode tab's Test Connection section).
+    public var zcodeQuota: CodingPlanQuota?
 
     private let environment: AppEnvironment
 
@@ -65,6 +70,49 @@ public final class SettingsViewModel {
             try? environment.keychain.deleteAPIKey(fingerprint: fingerprint)
         }
         statusMessage = "Stored key removed from Keychain."
+    }
+
+    // MARK: - ZCode (Coding Plan) key
+
+    public func saveZCodeKey() async {
+        let trimmed = zcodeKeyInput.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            zcodeStatusMessage = "Enter a Coding Plan API key first."
+            return
+        }
+        do {
+            let fingerprint = try environment.zcodeKeychain.saveAPIKey(trimmed)
+            zcodeKeyInput = ""
+            zcodeStatusMessage = "Key saved to Keychain. Fingerprint " + KeyFingerprint.displayPrefix(fingerprint, length: 8) + "..."
+        } catch {
+            zcodeStatusMessage = "Failed to save key: " + error.localizedDescription
+        }
+    }
+
+    public func removeZCodeKey() async {
+        let fingerprints = (try? environment.zcodeKeychain.listFingerprints()) ?? []
+        for fingerprint in fingerprints {
+            try? environment.zcodeKeychain.deleteAPIKey(fingerprint: fingerprint)
+        }
+        zcodeStatusMessage = "Coding Plan key removed from Keychain."
+    }
+
+    public func testZCodeConnection() async {
+        let fingerprints = (try? environment.zcodeKeychain.listFingerprints()) ?? []
+        guard let fingerprint = fingerprints.first else {
+            zcodeStatusMessage = "Save a Coding Plan key first."
+            return
+        }
+        do {
+            let key = try environment.zcodeKeychain.readAPIKey(fingerprint: fingerprint)
+            let region = environment.settings.zcodeRegion
+            let quota = try await environment.quotaProvider(region, key).fetchQuota()
+            zcodeQuota = quota
+            try? environment.repository.saveQuotaSnapshot(quota, provider: region.rawValue)
+            zcodeStatusMessage = "Connection OK."
+        } catch {
+            zcodeStatusMessage = "Connection failed: " + error.localizedDescription
+        }
     }
 
     public func renameKey(_ key: APIKey, to name: String) async {

@@ -26,12 +26,16 @@ All data stays on your Mac. No scraping, no cookies, no MITM.
 
 ## Features
 
-- **Menu bar quick panel** - balance, today's cost, 7-day mini trend, top API keys, one click to the dashboard
-- **Floating dashboard** - metric cards (balance / today / period cost / requests / tokens), 7D / 30D / This Month / custom ranges, bar chart with per-day per-key hover tooltip, daily history with day detail, multi-select API key filter
+- **Menu bar quick panel** - DeepSeek balance + today in one row, coding-plan rings (ZCode / Kimi / Qoder) with reset times, one click to the dashboard
+- **Floating dashboard** - equal quarters for DeepSeek / ZCode / Kimi / Qoder, period stats beside the filters, bar chart with per-day per-key hover tooltip, daily history with day detail, multi-select API key filter
+- **Desktop widgets** - desktop-level widget rows, one per provider (ZCode 5h+weekly, Kimi 5h+weekly, Qoder monthly credits + org pool, DeepSeek balance + today); drag to move, click opens the dashboard, right-click for actions (toggle Option+W)
+- **ZCode (GLM Coding Plan) quota** - 5-hour and weekly windows with reset times, via the same quota-monitor endpoint the official glm-plan-usage plugin uses; the Coding Plan key lives in its own Keychain service, quota refresh is throttled to once per 5 minutes
+- **Kimi (Kimi Code) quota** - weekly and 5-hour windows auto-detected from the Kimi CLI credential (~/.kimi-code); expired tokens refresh themselves with the stored refresh token (rotated tokens written back, lineage-checked), so no manual CLI runs
+- **Qoder (CN) quota** - monthly credit pool (and the team org resource package when provisioned), auto-detected from the Qoder desktop app's encrypted auth file (Keychain SafeStorage -> AES decrypt, read-only); the token lives about a month
 - **Per-key cost breakdown** - derived from the official export's `price x amount` rows and cross-checked against billing totals (imports use replace semantics, so re-imports never double-count)
 - **Balance-derived Today** - today's cost comes from balance snapshots (yesterday's baseline minus today, top-ups detected and ignored); official exports stay authoritative for completed days
 - **Daily export auto-sync** - optional DeepSeekSync module downloads the official usage export once per day at 00:30 (catch-up on launch/wake) and imports it automatically
-- **Extras** - balance alerts with anti-spam, launch at login, dock icon toggle, global shortcut (default Option+Space), pin / mini mode, window state restore, dark/light mode, macOS 26 Liquid Glass buttons
+- **Extras** - balance alerts with anti-spam, launch at login, dock icon toggle, global shortcuts (Option+Space dashboard, Option+W widgets), window state restore, dark/light mode, macOS 26 Liquid Glass buttons
 
 ## Requirements
 

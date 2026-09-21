@@ -52,11 +52,14 @@ struct APIKeyBreakdownView: View {
                     .font(.callout)
                 }
                 .listStyle(.inset)
+                .environment(\.defaultMinListRowHeight, 30)
             }
             Text("Per-key cost is derived from official price x amount rows.")
                 .font(.caption2)
                 .foregroundStyle(.tertiary)
+                .padding(.top, 4)
         }
+        .padding(.vertical, 2)
     }
 
     private func displayName(for usage: APIKeyUsage) -> String {

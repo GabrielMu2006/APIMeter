@@ -17,16 +17,28 @@ public enum KeychainError: Error, LocalizedError, Equatable {
     }
 }
 
-/// Stores DeepSeek API keys in the macOS Keychain (spec §8).
+/// Stores provider API keys in the macOS Keychain (spec §8).
 /// - Raw keys are held only briefly in memory and only ever persisted in Keychain.
 /// - SQLite stores only SHA256 fingerprints (KeyFingerprint).
 /// - Items are keyed by account = "fingerprint:<SHA256>" so multiple API keys
 ///   are supported and re-saving the same key is idempotent.
+/// - One Keychain *service* per provider (DeepSeek, ZCode Coding Plan) so
+///   their key pools never mix.
 public struct KeychainService: Sendable {
-    public static let service = "com.apimeter.deepseek-api-keys"
+    public static let deepSeekService = "com.apimeter.deepseek-api-keys"
+    public static let zcodeService = "com.apimeter.zhipu-coding-plan-key"
     public static let accountPrefix = "fingerprint:"
 
-    public init() {}
+    private let service: String
+
+    /// DeepSeek key pool by default (existing behavior).
+    public init() {
+        self.init(service: Self.deepSeekService)
+    }
+
+    public init(service: String) {
+        self.service = service
+    }
 
     /// Saves the key and returns its fingerprint.
     public func saveAPIKey(_ rawKey: String) throws -> String {
@@ -40,7 +52,7 @@ public struct KeychainService: Sendable {
 
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: Self.service,
+            kSecAttrService as String: service,
             kSecAttrAccount as String: account,
             kSecValueData as String: Data(key.utf8),
             kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly,
@@ -57,7 +69,7 @@ public struct KeychainService: Sendable {
     public func readAPIKey(fingerprint: String) throws -> String {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: Self.service,
+            kSecAttrService as String: service,
             kSecAttrAccount as String: Self.accountPrefix + fingerprint,
             kSecReturnData as String: true,
             kSecMatchLimit as String: kSecMatchLimitOne,
@@ -77,7 +89,7 @@ public struct KeychainService: Sendable {
     public func deleteAPIKey(fingerprint: String) throws {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: Self.service,
+            kSecAttrService as String: service,
             kSecAttrAccount as String: Self.accountPrefix + fingerprint,
         ]
         let status = SecItemDelete(query as CFDictionary)
@@ -90,7 +102,7 @@ public struct KeychainService: Sendable {
     public func listFingerprints() throws -> [String] {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: Self.service,
+            kSecAttrService as String: service,
             kSecReturnAttributes as String: true,
             kSecMatchLimit as String: kSecMatchLimitAll,
         ]

@@ -11,6 +11,7 @@ struct APIMeterApp: App {
             let environment = try AppEnvironment.live()
             let appState = AppState(environment: environment)
             appState.floatingPanelController = FloatingPanelController(state: appState)
+            appState.widgetPanelController = WidgetPanelController(state: appState)
             AppState.current = appState
             _state = State(initialValue: appState)
         } catch {

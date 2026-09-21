@@ -50,6 +50,7 @@ struct DailyUsageList: View {
                     }
                 }
                 .listStyle(.inset)
+                .environment(\.defaultMinListRowHeight, 32)
             }
         }
     }

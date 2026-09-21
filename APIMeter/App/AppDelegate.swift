@@ -36,14 +36,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
             let env = ProcessInfo.processInfo.environment
             if env["APIMETER_OPEN_DASHBOARD"] == "1" {
-                // Verification aid: present the dashboard (or mini) at launch.
+                // Verification aid: present the dashboard at launch.
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                    state.floatingPanelController?.show(mode: env["APIMETER_MINI"] == "1" ? .mini : .full)
+                    state.floatingPanelController?.show()
                     NSApp.activate(ignoringOtherApps: true)
                 }
             } else if AppSettings.shared.openDashboardAtLaunch {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                     state.floatingPanelController?.show()
+                }
+            }
+            if env["APIMETER_OPEN_WIDGETS"] == "1" || AppSettings.shared.showDesktopWidgets {
+                // Desktop widgets: restore per setting (or the verification
+                // aid env), without stealing focus.
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    state.widgetPanelController?.show()
                 }
             }
         } else {
@@ -81,10 +88,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func setupGlobalShortcut() {
-        Log.info("AppDelegate: registering global shortcut")
+        Log.info("AppDelegate: registering global shortcuts")
         KeyboardShortcuts.onKeyUp(for: .toggleDashboard) {
             Task { @MainActor in
                 AppState.current?.toggleDashboard()
+            }
+        }
+        KeyboardShortcuts.onKeyUp(for: .toggleWidgets) {
+            Task { @MainActor in
+                AppState.current?.widgetPanelController?.toggle()
             }
         }
     }
