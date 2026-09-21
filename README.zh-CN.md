@@ -100,6 +100,31 @@ Key 只保存在 macOS 钥匙串（条目 `com.apimeter.deepseek-api-keys`）。
 - **Global Shortcut**：默认 ⌥Space，可重新录制
 - **Appearance**：System / Light / Dark
 
+## Coding Plan 额度（ZCode / Kimi / Qoder）
+
+三家额度都会出现在菜单栏面板、Dashboard 和桌面小组件里。快照本地保留 30 天；自动刷新限流为每家每 5 分钟一次。
+
+### ZCode（GLM Coding Plan）- 粘贴 API Key
+
+1. 在控制台（国内 BigModel 或国际 Z.ai）的 Coding Plan 版块创建一个 API Key。
+2. 设置 → Coding Plans → 粘贴 Key → **保存到钥匙串**。
+3. 选择区域（国内 = open.bigmodel.cn，国际 = api.z.ai），点 **测试连接**。5 小时与周窗口（剩余百分比 + 重置时间）随即出现在所有界面。
+
+### Kimi（Kimi Code）- 全自动
+
+- 先安装并登录一次 Kimi CLI（`kimi login`）。API Meter 只读读取 `~/.kimi-code/credentials/kimi-code.json`。
+- access token 只有约 15 分钟寿命，API Meter 会用存储的 refresh token 自动续期，并把轮换后的 token 写回（CLI 不受影响）。只有 refresh token 本身失效时才需要重新 `kimi login`。
+
+### Qoder（国内版）- 全自动
+
+- 安装并登录 Qoder CN 桌面版。API Meter 只读解密其凭据文件；macOS 会请求一次钥匙串访问权限 - 选择**始终允许**。
+- token 有效期约一个月（设置页显示到期时间）。个人月度 credits 池立即显示；团队组织资源包一旦分配会自动出现。
+
+### 桌面小组件（默认快捷键 ⌥W）
+
+- 在 设置 → 通用（或 设置 → Coding Plans → 桌面小组件）开启。每家一行：ZCode 5 小时+周窗口、Kimi 5 小时+周窗口、Qoder 月度+组织池、DeepSeek 余额+今日。
+- 拖拽移动（位置自动记忆）、单击卡片打开 Dashboard、右键菜单：打开主面板 / 鼠标穿透（纯展示）/ 刷新 / 隐藏。
+
 ## 日常使用
 
 | 位置 | 内容 |

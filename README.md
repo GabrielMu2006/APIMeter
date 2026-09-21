@@ -16,6 +16,7 @@ All data stays on your Mac. No scraping, no cookies, no MITM.
 - [Requirements](#requirements)
 - [Installation](#installation)
 - [First-run configuration](#first-run-configuration)
+- [Coding Plan quotas (ZCode / Kimi / Qoder)](#coding-plan-quotas-zcode--kimi--qoder)
 - [Daily usage guide](#daily-usage-guide)
 - [How the numbers work](#how-the-numbers-work)
 - [DeepSeekSync (optional auto-export)](#deepseeksync-optional-auto-export)
@@ -105,6 +106,49 @@ If the system prompt was dismissed: System Settings -> Notifications -> API Mete
 - **Show Dock Icon**: toggles the Dock presence immediately.
 - **Global Shortcut**: default Option+Space; record your own combination.
 - **Appearance**: System / Light / Dark.
+
+## Coding Plan quotas (ZCode / Kimi / Qoder)
+
+All three providers feed the menu bar panel, the dashboard and the desktop
+widgets. Snapshots are kept locally for 30 days; automatic refresh is
+throttled to one request per 5 minutes per provider.
+
+### ZCode (GLM Coding Plan) - paste an API key
+
+1. Create an API key in your provider console (BigModel China or Z.ai
+   global, Coding Plan section).
+2. Settings -> Coding Plans -> paste the key -> **Save to Keychain**.
+3. Pick the region (BigModel China = open.bigmodel.cn, Z.ai global =
+   api.z.ai) and click **Test Connection**. Your 5-hour and weekly windows
+   (remaining % + reset time) now appear everywhere.
+
+### Kimi (Kimi Code) - automatic
+
+- Install and log in to the Kimi CLI once (`kimi login`). API Meter reads
+  `~/.kimi-code/credentials/kimi-code.json` read-only.
+- The access token lives ~15 minutes; API Meter refreshes it by itself
+  with the stored refresh token and writes the rotated tokens back, so the
+  CLI keeps working. Only if the refresh token itself dies do you need
+  `kimi login` again.
+
+### Qoder (CN) - automatic
+
+- Install and log in to the Qoder CN desktop app. API Meter decrypts its
+  auth file read-only; macOS asks once for keychain access - choose
+  **Always Allow**.
+- The token lives about a month (expiry shown in Settings -> Coding
+  Plans). Your monthly credit pool appears immediately; the team org
+  resource pool shows up automatically once your org provisions one.
+
+### Desktop widgets (default shortcut Option+W)
+
+- Enable in Settings -> General (or Settings -> Coding Plans -> Desktop
+  Widgets). One row per provider appears at desktop level: ZCode 5h +
+  weekly, Kimi 5h + weekly, Qoder monthly + org pool, DeepSeek balance +
+  today.
+- Drag to move (position remembered), click a card to open the dashboard,
+  right-click for actions: open dashboard / click-through (pure display)
+  mode / refresh / hide.
 
 ## Daily usage guide
 
