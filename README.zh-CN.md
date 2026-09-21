@@ -16,6 +16,7 @@ API Meter 是一个本地优先的 macOS 应用，把 DeepSeek 官方数据（�
 - [系统要求](#系统要求)
 - [安装](#安装)
 - [首次配置](#首次配置)
+- [Coding Plan 额度（ZCode / Kimi / Qoder）](#coding-plan-额度zcode--kimi--qoder)
 - [日常使用](#日常使用)
 - [数字是怎么算出来的](#数字是怎么算出来的)
 - [DeepSeekSync（可选自动导出）](#deepseeksync可选自动导出)
