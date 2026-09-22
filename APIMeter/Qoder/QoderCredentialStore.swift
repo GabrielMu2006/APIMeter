@@ -76,18 +76,7 @@ public struct QoderCredentialStore: Sendable {
     }
 
     static func keychainSecret(service: String, account: String) -> String? {
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecAttrAccount as String: account,
-            kSecReturnData as String: true,
-            kSecMatchLimit as String: kSecMatchLimitOne,
-        ]
-        var item: CFTypeRef?
-        guard SecItemCopyMatching(query as CFDictionary, &item) == errSecSuccess,
-              let data = item as? Data
-        else { return nil }
-        return String(data: data, encoding: .utf8)
+        SafeStorageSecretCache.shared.secret(service: service, account: account)
     }
 
     /// ISO-8601 timestamp as stored by the desktop app ("2026-10-18T10:26:07Z").
@@ -97,6 +86,69 @@ public struct QoderCredentialStore: Sendable {
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         return try? formatter.date(from: string)
+    }
+}
+
+/// Per-process memoization for the Safe Storage keychain secret.
+///
+/// Reading ANOTHER app's keychain item can require the login password, and
+/// the "Always Allow" grant is tied to the app's code signature - an ad-hoc
+/// rebuilt binary never sticks in the item's ACL, so without memoization
+/// every quota refresh would re-prompt (the "password storm"). Rules:
+/// - a successful secret is cached for the process lifetime
+/// - an interactive failure (password required, user cancelled) marks the
+///   entry denied so this launch never touches the keychain for it again
+/// - plain "item not found" is cheap and prompt-free, retried as normal
+private final class SafeStorageSecretCache: @unchecked Sendable {
+    static let shared = SafeStorageSecretCache()
+
+    private let lock = NSLock()
+    private var secrets: [String: String] = [:]
+    private var deniedKeys: Set<String> = []
+
+    func secret(service: String, account: String) -> String? {
+        let key = service + "|" + account
+        lock.lock()
+        if deniedKeys.contains(key) {
+            lock.unlock()
+            return nil
+        }
+        if let cached = secrets[key] {
+            lock.unlock()
+            return cached
+        }
+        lock.unlock()
+
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: account,
+            kSecReturnData as String: true,
+            kSecMatchLimit as String: kSecMatchLimitOne,
+        ]
+        var item: CFTypeRef?
+        let status = SecItemCopyMatching(query as CFDictionary, &item)
+
+        switch status {
+        case errSecSuccess:
+            let value = (item as? Data).flatMap { String(data: $0, encoding: .utf8) }
+            if let value {
+                lock.lock()
+                secrets[key] = value
+                lock.unlock()
+            }
+            return value
+        case errSecAuthFailed, errSecInteractionRequired, errSecUserCanceled:
+            // The user was (or would be) prompted and it did not succeed -
+            // stop asking for this entry until the next launch.
+            lock.lock()
+            deniedKeys.insert(key)
+            lock.unlock()
+            return nil
+        default:
+            // errSecItemNotFound and friends: no prompt involved.
+            return nil
+        }
     }
 }
 
