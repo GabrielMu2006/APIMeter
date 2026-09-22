@@ -20,6 +20,14 @@ public final class AppEnvironment {
     /// Qoder credential reader (the desktop app's encrypted auth file, read-only).
     public let qoderCredentialStore: QoderCredentialStore
     public let qoderQuotaProvider: (QoderCredential) -> any QoderQuotaProviding
+    /// Codex credential reader (the CLI's auth.json, read-only until refresh).
+    public let codexCredentialStore: CodexCredentialStore
+    /// Second parameter: optional user-configured proxy for the Codex usage
+    /// request (chatgpt.com is unreachable on some networks without one).
+    public let codexQuotaProvider: (CodexCredential, CodexProxyConfig?) -> any CodexQuotaProviding
+    /// Offline fallback: parses the rate_limits the CLI writes into its
+    /// session log after every model call.
+    public let codexSessionUsageReader: CodexSessionUsageReader
 
     public init(
         database: DatabaseManager,
@@ -30,7 +38,10 @@ public final class AppEnvironment {
         kimiCredentialStore: KimiCredentialStore = KimiCredentialStore(),
         kimiQuotaProvider: ((KimiCredential) -> any KimiQuotaProviding)? = nil,
         qoderCredentialStore: QoderCredentialStore? = nil,
-        qoderQuotaProvider: ((QoderCredential) -> any QoderQuotaProviding)? = nil
+        qoderQuotaProvider: ((QoderCredential) -> any QoderQuotaProviding)? = nil,
+        codexCredentialStore: CodexCredentialStore? = nil,
+        codexQuotaProvider: ((CodexCredential, CodexProxyConfig?) -> any CodexQuotaProviding)? = nil,
+        codexSessionUsageReader: CodexSessionUsageReader? = nil
     ) {
         self.database = database
         self.repository = UsageRepository(database: database)
@@ -65,6 +76,15 @@ public final class AppEnvironment {
                 QoderQuotaClient(credential: credential)
             }
         }
+        self.codexCredentialStore = codexCredentialStore ?? CodexCredentialStore()
+        if let codexQuotaProvider {
+            self.codexQuotaProvider = codexQuotaProvider
+        } else {
+            self.codexQuotaProvider = { credential, proxy in
+                CodexQuotaClient(credential: credential, proxy: proxy)
+            }
+        }
+        self.codexSessionUsageReader = codexSessionUsageReader ?? CodexSessionUsageReader()
     }
 
     /// The real environment backed by the on-disk database.
@@ -81,7 +101,10 @@ public final class AppEnvironment {
         kimiCredentialStore: KimiCredentialStore? = nil,
         kimiQuotaProvider: ((KimiCredential) -> any KimiQuotaProviding)? = nil,
         qoderCredentialStore: QoderCredentialStore? = nil,
-        qoderQuotaProvider: ((QoderCredential) -> any QoderQuotaProviding)? = nil
+        qoderQuotaProvider: ((QoderCredential) -> any QoderQuotaProviding)? = nil,
+        codexCredentialStore: CodexCredentialStore? = nil,
+        codexQuotaProvider: ((CodexCredential, CodexProxyConfig?) -> any CodexQuotaProviding)? = nil,
+        codexSessionUsageReader: CodexSessionUsageReader? = nil
     ) throws -> AppEnvironment {
         AppEnvironment(
             database: try DatabaseManager.ephemeral(),
@@ -90,7 +113,10 @@ public final class AppEnvironment {
             kimiCredentialStore: kimiCredentialStore ?? KimiCredentialStore(homeDirectory: URL(fileURLWithPath: "/nonexistent-kimi-home")),
             kimiQuotaProvider: kimiQuotaProvider,
             qoderCredentialStore: qoderCredentialStore ?? QoderCredentialStore(appSupportRoot: URL(fileURLWithPath: "/nonexistent-qoder-root")),
-            qoderQuotaProvider: qoderQuotaProvider
+            qoderQuotaProvider: qoderQuotaProvider,
+            codexCredentialStore: codexCredentialStore ?? CodexCredentialStore(homeDirectory: URL(fileURLWithPath: "/nonexistent-codex-home")),
+            codexQuotaProvider: codexQuotaProvider,
+            codexSessionUsageReader: codexSessionUsageReader ?? CodexSessionUsageReader(sessionsDirectory: URL(fileURLWithPath: "/nonexistent-codex-sessions"))
         )
     }
 

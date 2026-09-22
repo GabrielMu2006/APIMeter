@@ -53,6 +53,8 @@ public final class AppSettings {
         static let dismissedSyncSetupPrompt = "settings.sync.setupPromptDismissed"
         static let zcodeRegion = "settings.zcode.region"
         static let showDesktopWidgets = "settings.widgets.showDesktop"
+        static let codexProxyEnabled = "settings.codex.proxyEnabled"
+        static let codexProxyAddress = "settings.codex.proxyAddress"
     }
 
     public init(defaults: UserDefaults = .standard) {
@@ -71,6 +73,9 @@ public final class AppSettings {
         self.dismissedSyncSetupPrompt = defaults.bool(forKey: Keys.dismissedSyncSetupPrompt)
         self.zcodeRegion = defaults.string(forKey: Keys.zcodeRegion).flatMap(ZCodeRegion.init(rawValue:)) ?? .bigmodelCN
         self.showDesktopWidgets = defaults.bool(forKey: Keys.showDesktopWidgets)
+        // Proxy for Codex usage requests: OFF unless the user turns it on.
+        self.codexProxyEnabled = defaults.bool(forKey: Keys.codexProxyEnabled)
+        self.codexProxyAddress = defaults.string(forKey: Keys.codexProxyAddress) ?? ""
     }
 
     public var retention: HistoryRetention {
@@ -145,5 +150,17 @@ public final class AppSettings {
     /// Show the desktop widget panel (ZCode quota + DeepSeek cards).
     public var showDesktopWidgets: Bool {
         didSet { defaults.set(showDesktopWidgets, forKey: Keys.showDesktopWidgets) }
+    }
+
+    /// Route the Codex usage request through a user-supplied proxy. Off by
+    /// default; only relevant where chatgpt.com is unreachable directly.
+    public var codexProxyEnabled: Bool {
+        didSet { defaults.set(codexProxyEnabled, forKey: Keys.codexProxyEnabled) }
+    }
+
+    /// Proxy address for Codex, e.g. "http://127.0.0.1:8080" or
+    /// "socks5://127.0.0.1:7890". Not a secret; safe in UserDefaults.
+    public var codexProxyAddress: String {
+        didSet { defaults.set(codexProxyAddress, forKey: Keys.codexProxyAddress) }
     }
 }

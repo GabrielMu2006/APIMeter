@@ -78,6 +78,19 @@ struct DashboardView: View {
                     )
                 }
                 .opacity((state.qoderQuotaViewModel.hasCredential || state.qoderQuotaViewModel.quota != nil) ? 1 : 0.35)
+                VStack(spacing: 10) {
+                    ZCodeQuotaCard(
+                        title: "Codex · 5 小时",
+                        window: state.codexQuotaViewModel.quota?.fiveHour,
+                        subtitle: codexFiveHourSubtitle
+                    )
+                    ZCodeQuotaCard(
+                        title: "Codex · 本周",
+                        window: state.codexQuotaViewModel.quota?.weekly,
+                        subtitle: codexWeeklySubtitle
+                    )
+                }
+                .opacity((state.codexQuotaViewModel.hasCredential || state.codexQuotaViewModel.quota != nil) ? 1 : 0.35)
             }
 
             HStack {
@@ -253,6 +266,29 @@ struct DashboardView: View {
         }
         if let resetsAt = state.qoderQuotaViewModel.quota?.orgMonthly?.resetsAt {
             parts.append("重置 " + ZCodeQuotaSection.resetStamp(resetsAt))
+        }
+        return parts.isEmpty ? "" : parts.joined(separator: " · ")
+    }
+
+    private var codexFiveHourSubtitle: String {
+        state.codexQuotaViewModel.resetsIn(state.codexQuotaViewModel.quota?.fiveHour)
+            .map { "◔ " + $0 + " 后重置" } ?? ""
+    }
+
+    private var codexWeeklySubtitle: String {
+        let codex = state.codexQuotaViewModel
+        if codex.quota == nil {
+            return codex.hasCredential ? "Loading..." : "Run codex login once"
+        }
+        var parts: [String] = []
+        if let level = codex.quota?.planLevel {
+            parts.append(level.capitalized)
+        }
+        if let resetsAt = codex.quota?.weekly?.resetsAt {
+            parts.append("重置 " + ZCodeQuotaSection.resetStamp(resetsAt))
+        }
+        if codex.usingSessionFallback {
+            parts.append("离线")
         }
         return parts.isEmpty ? "" : parts.joined(separator: " · ")
     }

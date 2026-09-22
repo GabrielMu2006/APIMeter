@@ -97,6 +97,24 @@ struct DesktopWidgetsView: View {
                     .frame(width: cardWidth, height: cardHeight)
                 }
             }
+            if showCodexRow {
+                HStack(spacing: spacing) {
+                    QuotaWidgetCard(
+                        title: "Codex · 5 小时",
+                        window: state.codexQuotaViewModel.quota?.fiveHour,
+                        isFiveHourCard: true,
+                        resetsIn: state.codexQuotaViewModel.resetsIn(state.codexQuotaViewModel.quota?.fiveHour, now: now)
+                    )
+                    .frame(width: cardWidth, height: cardHeight)
+                    QuotaWidgetCard(
+                        title: "Codex · 本周",
+                        window: state.codexQuotaViewModel.quota?.weekly,
+                        isFiveHourCard: false,
+                        captionOverride: codexWeeklyCaption
+                    )
+                    .frame(width: cardWidth, height: cardHeight)
+                }
+            }
             BalanceWidgetCard(
                 balance: state.balanceViewModel.balance?.balanceInfos.first,
                 todayCost: state.dashboardViewModel.todayDisplayCost,
@@ -115,6 +133,34 @@ struct DesktopWidgetsView: View {
     /// Qoder likewise auto-detects from the desktop app's encrypted auth.
     private var showQoderRow: Bool {
         state.qoderQuotaViewModel.hasCredential || state.qoderQuotaViewModel.quota != nil
+    }
+
+    /// Codex auto-detects from the CLI's auth.json.
+    private var showCodexRow: Bool {
+        state.codexQuotaViewModel.hasCredential || state.codexQuotaViewModel.quota != nil
+    }
+
+    private var codexWeeklyCaption: String? {
+        let codex = state.codexQuotaViewModel
+        if codex.quota == nil {
+            switch codex.credentialState {
+            case .expired:
+                return "凭据失效 · 运行 codex login"
+            default:
+                return "运行一次 Codex CLI 以激活"
+            }
+        }
+        var parts: [String] = []
+        if let level = codex.quota?.planLevel {
+            parts.append(level.capitalized)
+        }
+        if let resetsAt = codex.quota?.weekly?.resetsAt {
+            parts.append("重置 " + ZCodeQuotaSection.resetStamp(resetsAt))
+        }
+        if codex.usingSessionFallback {
+            parts.append("离线")
+        }
+        return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
 
     private var qoderPersonalCaption: String? {

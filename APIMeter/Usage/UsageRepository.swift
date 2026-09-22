@@ -538,6 +538,7 @@ public struct UsageRepository: Sendable {
     public enum QuotaProviderKey {
         public static let kimi = "kimi"
         public static let qoder = "qoder"
+        public static let codex = "codex"
     }
 
     /// Stores every window of a quota snapshot in one write, pruning rows

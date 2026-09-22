@@ -219,6 +219,91 @@ struct ZCodeSettingsView: View {
                 }
             }
 
+            Section("Codex (auto-detected)") {
+                switch state.codexQuotaViewModel.credentialState {
+                case .available(let credential):
+                    LabeledContent("Credential") {
+                        Text("Codex CLI token detected"
+                            + (credential.planType.map { " · " + $0.capitalized } ?? ""))
+                            .foregroundStyle(.secondary)
+                    }
+                    LabeledContent("Token expiry") {
+                        Text(credential.expiresAt.map { "有效期至 " + $0.formatted(date: .abbreviated, time: .omitted) + "（过期自动续期）" } ?? "—")
+                            .foregroundStyle(.secondary)
+                    }
+                case .expired:
+                    LabeledContent("Credential") {
+                        Text("凭据已失效 - 请运行 codex login 重新登录")
+                            .foregroundStyle(.orange)
+                    }
+                case .missing:
+                    LabeledContent("Credential") {
+                        Text("未找到 - 安装并运行 codex login")
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                Toggle("Use proxy for Codex requests", isOn: Binding(
+                    get: { state.environment.settings.codexProxyEnabled },
+                    set: { enabled in
+                        state.environment.settings.codexProxyEnabled = enabled
+                        Task { await state.codexQuotaViewModel.refresh(force: true) }
+                    }
+                ))
+                if state.environment.settings.codexProxyEnabled {
+                    TextField("http://127.0.0.1:7890", text: Binding(
+                        get: { state.environment.settings.codexProxyAddress },
+                        set: { state.environment.settings.codexProxyAddress = $0 }
+                    ))
+                    .textFieldStyle(.roundedBorder)
+                    .onSubmit {
+                        Task { await state.codexQuotaViewModel.refresh(force: true) }
+                    }
+                    if let proxy = CodexProxyConfig.parse(state.environment.settings.codexProxyAddress) {
+                        Text("已启用：Codex 请求经由 \(proxy.host):\(proxy.port)（\(proxy.kind == .http ? "HTTP" : "SOCKS")），仅影响 API Meter 自己的额度请求。")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    } else {
+                        Text("无法解析代理地址 - 示例：http://127.0.0.1:8080 或 socks5://127.0.0.1:7890（需带端口）。地址无效时仍按直连尝试。")
+                            .font(.caption)
+                            .foregroundStyle(.orange)
+                    }
+                } else {
+                    Text("chatgpt.com 在部分网络无法直连。URLSession 不读取环境变量代理，如果你的 Codex CLI 依赖本地代理，请在上面填入同一地址。默认关闭。")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                HStack {
+                    Button("Test Connection") {
+                        Task { await state.codexQuotaViewModel.refresh(force: true) }
+                    }
+                    if let quota = state.codexQuotaViewModel.quota {
+                        Text("Last fetch " + quota.fetchedAt.formatted(date: .omitted, time: .shortened))
+                            .font(.caption)
+                            .foregroundStyle(.tertiary)
+                    }
+                }
+                if let quota = state.codexQuotaViewModel.quota {
+                    if let fiveHour = quota.fiveHour {
+                        LabeledContent("5-hour") {
+                            Text("已用 " + (fiveHour.usedPercent.map(QuotaWidgetCard.percentText) ?? "—"))
+                                .monospacedDigit()
+                        }
+                    }
+                    if let weekly = quota.weekly {
+                        LabeledContent("Weekly") {
+                            Text("已用 " + (weekly.usedPercent.map(QuotaWidgetCard.percentText) ?? "—"))
+                                .monospacedDigit()
+                        }
+                    }
+                }
+                if let error = state.codexQuotaViewModel.lastError {
+                    Text(error)
+                        .font(.caption)
+                        .foregroundStyle(.orange)
+                        .textSelection(.enabled)
+                }
+            }
+
             Section("Desktop Widgets") {
                 Toggle("Show on Desktop", isOn: Binding(
                     get: { state.environment.settings.showDesktopWidgets },

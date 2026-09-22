@@ -10,6 +10,7 @@ public final class AppState {
     public var zcodeQuotaViewModel: ZCodeQuotaViewModel
     public var kimiQuotaViewModel: KimiQuotaViewModel
     public var qoderQuotaViewModel: QoderQuotaViewModel
+    public var codexQuotaViewModel: CodexQuotaViewModel
     public var dashboardViewModel: DashboardViewModel
     public var settingsViewModel: SettingsViewModel
     public var selectedDay: LocalDay?
@@ -34,6 +35,7 @@ public final class AppState {
         self.zcodeQuotaViewModel = ZCodeQuotaViewModel(environment: environment)
         self.kimiQuotaViewModel = KimiQuotaViewModel(environment: environment)
         self.qoderQuotaViewModel = QoderQuotaViewModel(environment: environment)
+        self.codexQuotaViewModel = CodexQuotaViewModel(environment: environment)
         self.dashboardViewModel = DashboardViewModel(environment: environment)
         self.settingsViewModel = SettingsViewModel(environment: environment)
     }
@@ -63,6 +65,7 @@ public final class AppState {
         await zcodeQuotaViewModel.refresh()
         await kimiQuotaViewModel.refresh()
         await qoderQuotaViewModel.refresh()
+        await codexQuotaViewModel.refresh()
         await dashboardViewModel.reload()
     }
 }

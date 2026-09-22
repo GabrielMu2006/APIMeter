@@ -88,6 +88,7 @@ public final class WidgetPanelController: NSObject, NSWindowDelegate {
         var rows: CGFloat = 1
         if state.kimiQuotaViewModel.hasCredential || state.kimiQuotaViewModel.quota != nil { rows += 1 }
         if state.qoderQuotaViewModel.hasCredential || state.qoderQuotaViewModel.quota != nil { rows += 1 }
+        if state.codexQuotaViewModel.hasCredential || state.codexQuotaViewModel.quota != nil { rows += 1 }
         return NSSize(
             width: cardWidth * 2 + spacing,
             height: (cardHeight + spacing) * rows + wideCardHeight

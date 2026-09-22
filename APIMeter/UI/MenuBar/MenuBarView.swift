@@ -137,6 +137,10 @@ struct ZCodeQuotaSection: View {
         state.qoderQuotaViewModel.hasCredential || state.qoderQuotaViewModel.quota != nil
     }
 
+    private var showCodex: Bool {
+        state.codexQuotaViewModel.hasCredential || state.codexQuotaViewModel.quota != nil
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
@@ -146,7 +150,7 @@ struct ZCodeQuotaSection: View {
                     Text("ZCode " + level.capitalized).font(.caption2).foregroundStyle(.tertiary)
                 }
             }
-            if state.zcodeQuotaViewModel.quota != nil || showKimi || showQoder {
+            if state.zcodeQuotaViewModel.quota != nil || showKimi || showQoder || showCodex {
                 // Grid keeps the two ring columns aligned across rows even
                 // when the label widths differ.
                 Grid(alignment: .leading, horizontalSpacing: 14, verticalSpacing: 8) {
@@ -191,6 +195,20 @@ struct ZCodeQuotaSection: View {
                                 subtitle: state.qoderQuotaViewModel.hasOrgPool
                                     ? state.qoderQuotaViewModel.quota?.orgMonthly?.resetsAt.map { "重置 " + Self.resetStamp($0) }
                                     : "组织池未开放"
+                            )
+                        }
+                    }
+                    if showCodex {
+                        GridRow {
+                            QuotaRingBlock(
+                                window: state.codexQuotaViewModel.quota?.fiveHour,
+                                title: "Codex 5 小时",
+                                subtitle: state.codexQuotaViewModel.resetsIn(state.codexQuotaViewModel.quota?.fiveHour).map { "◔ " + $0 }
+                            )
+                            QuotaRingBlock(
+                                window: state.codexQuotaViewModel.quota?.weekly,
+                                title: "Codex 本周",
+                                subtitle: codexWeeklySubtitle
                             )
                         }
                     }
@@ -248,6 +266,21 @@ struct ZCodeQuotaSection: View {
         }
         if let resetsAt = qoder.quota?.monthly?.resetsAt {
             parts.append("重置 " + Self.resetStamp(resetsAt))
+        }
+        return parts.isEmpty ? nil : parts.joined(separator: " · ")
+    }
+
+    private var codexWeeklySubtitle: String? {
+        let codex = state.codexQuotaViewModel
+        var parts: [String] = []
+        if let level = codex.quota?.planLevel {
+            parts.append(level.capitalized)
+        }
+        if let resetsAt = codex.quota?.weekly?.resetsAt {
+            parts.append("重置 " + Self.resetStamp(resetsAt))
+        }
+        if codex.usingSessionFallback {
+            parts.append("离线")
         }
         return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
