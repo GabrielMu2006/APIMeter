@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// Settings container (spec 56): General, DeepSeek, API Keys, Usage,
-/// Notifications, Gateway, Appearance, Data, About.
+/// Settings container (spec 56): General, DeepSeek, Coding Plans, API Keys,
+/// Usage, Notifications, Appearance, Data, About.
 struct SettingsView: View {
     @Bindable var state: AppState
 

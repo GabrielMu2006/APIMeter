@@ -29,6 +29,7 @@ All data stays on your Mac. No scraping, no cookies, no MITM.
 
 - **Menu bar quick panel** - DeepSeek balance + today in one row, coding-plan rings (ZCode / Kimi / Qoder) with reset times, one click to the dashboard
 - **Floating dashboard** - equal quarters for DeepSeek / ZCode / Kimi / Qoder, period stats beside the filters, bar chart with per-day per-key hover tooltip, daily history with day detail, multi-select API key filter
+- **macOS system widgets (WidgetKit)** - optional native widgets for the desktop / Notification Center: Coding Plan rings (medium) and DeepSeek balance (small), fed by the app's refresh cycle
 - **Desktop widgets** - desktop-level widget rows, one per provider (ZCode 5h+weekly, Kimi 5h+weekly, Qoder monthly credits + org pool, DeepSeek balance + today); drag to move, click opens the dashboard, right-click for actions (toggle Option+W)
 - **ZCode (GLM Coding Plan) quota** - 5-hour and weekly windows with reset times, via the same quota-monitor endpoint the official glm-plan-usage plugin uses; the Coding Plan key lives in its own Keychain service, quota refresh is throttled to once per 5 minutes
 - **Kimi (Kimi Code) quota** - weekly and 5-hour windows auto-detected from the Kimi CLI credential (~/.kimi-code); expired tokens refresh themselves with the stored refresh token (rotated tokens written back, lineage-checked), so no manual CLI runs
@@ -166,6 +167,23 @@ throttled to one request per 5 minutes per provider.
 - Drag to move (position remembered), click a card to open the dashboard,
   right-click for actions: open dashboard / click-through (pure display)
   mode / refresh / hide.
+
+### macOS system widgets (WidgetKit, optional)
+
+- The app also ships two native macOS widgets you can place on the desktop
+  or in Notification Center (long-press the desktop / open Notification
+  Center -> Edit Widgets -> search "API Meter"):
+  - **Coding Plan 额度** (medium / large): ring cells for ZCode / Kimi /
+    Qoder / Codex with remaining % and live 5-hour reset countdowns; the
+    large size adds a DeepSeek balance + today header, per-window remaining
+    amounts and reset dates - the whole panel in one widget.
+  - **DeepSeek 余额** (small): current balance and today's spend.
+- Data comes from the app itself: every successful refresh writes a
+  snapshot and reloads the widget timelines, so the widgets stay as fresh
+  as the app (the extension is sandboxed, reads only that snapshot file,
+  and never touches your keys or the network).
+- These coexist with the custom desktop widget panel above; use whichever
+  fits. Clicking a system widget opens API Meter.
 
 ## Daily usage guide
 

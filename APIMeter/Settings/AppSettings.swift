@@ -44,7 +44,6 @@ public final class AppSettings {
         static let launchAtLogin = "settings.launchAtLogin"
         static let showDockIcon = "settings.showDockIcon"
         static let appearance = "settings.appearance"
-        static let restoreWindowState = "settings.restoreWindowState"
         static let openDashboardAtLaunch = "settings.openDashboardAtLaunch"
         static let lastSyncDay = "settings.sync.lastSyncDay"
         static let lastSyncResult = "settings.sync.lastResult"
@@ -64,7 +63,6 @@ public final class AppSettings {
         self.launchAtLogin = defaults.bool(forKey: Keys.launchAtLogin)
         self.showDockIcon = defaults.object(forKey: Keys.showDockIcon) == nil ? false : defaults.bool(forKey: Keys.showDockIcon)
         self.appearance = defaults.string(forKey: Keys.appearance).flatMap(AppearanceMode.init(rawValue:)) ?? .system
-        self.restoreWindowState = defaults.object(forKey: Keys.restoreWindowState) == nil ? true : defaults.bool(forKey: Keys.restoreWindowState)
         self.openDashboardAtLaunch = defaults.bool(forKey: Keys.openDashboardAtLaunch)
         self.lastSyncDay = defaults.string(forKey: Keys.lastSyncDay)
         self.lastSyncResult = defaults.string(forKey: Keys.lastSyncResult)
@@ -97,10 +95,6 @@ public final class AppSettings {
 
     public var appearance: AppearanceMode {
         didSet { defaults.set(appearance.rawValue, forKey: Keys.appearance) }
-    }
-
-    public var restoreWindowState: Bool {
-        didSet { defaults.set(restoreWindowState, forKey: Keys.restoreWindowState) }
     }
 
     public var openDashboardAtLaunch: Bool {

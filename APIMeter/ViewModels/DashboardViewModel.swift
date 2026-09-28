@@ -112,6 +112,9 @@ public final class DashboardViewModel {
             )
         )
         lastReload = Date()
+        // Today's estimate lands here (after the balance refresh), so the
+        // widget snapshot must pick it up too.
+        WidgetStateStore.postDataChange()
     }
 
     /// Builds the displayed daily list: official rows plus a synthesized

@@ -15,6 +15,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self?.setupGlobalShortcut()
         }
 
+        // Debug hook: APIMETER_OPEN_SETTINGS=1 exercises the settings entry
+        // a moment after launch (headless verification).
+        if ProcessInfo.processInfo.environment["APIMETER_OPEN_SETTINGS"] == "1" {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
+                AppState.current?.openSettingsWindow()
+            }
+        }
+
         if let state = AppState.current {
             Log.info("AppDelegate: state ready")
             refreshCoordinator = RefreshCoordinator(state: state)

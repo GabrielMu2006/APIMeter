@@ -3,8 +3,8 @@ import KeyboardShortcuts
 import ServiceManagement
 import SwiftUI
 
-/// General settings (spec 57): launch at login, dock icon, shortcut,
-/// open dashboard at launch, window restore.
+/// General settings (spec 57): launch at login, dashboard visibility,
+/// dock icon, global shortcuts, desktop widget panel.
 struct GeneralSettingsView: View {
     @Bindable var state: AppState
     @State private var loginItemStatus = ""
@@ -17,10 +17,25 @@ struct GeneralSettingsView: View {
                     set: { enabled in setLaunchAtLogin(enabled) }
                 ))
                 Text(loginItemStatus).font(.caption).foregroundStyle(.secondary)
+            }
+            Section("Dashboard") {
+                Toggle("Show Dashboard", isOn: Binding(
+                    get: { state.floatingPanelController?.isVisible ?? false },
+                    set: { visible in
+                        if visible {
+                            state.floatingPanelController?.show()
+                        } else {
+                            state.floatingPanelController?.hide()
+                        }
+                    }
+                ))
                 Toggle("Open Dashboard at Launch", isOn: Binding(
                     get: { state.environment.settings.openDashboardAtLaunch },
                     set: { state.environment.settings.openDashboardAtLaunch = $0 }
                 ))
+                Text("The floating dashboard's pin state (always on top) is remembered.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
             Section("Dock") {
                 Toggle("Show Dock Icon", isOn: Binding(
@@ -58,15 +73,9 @@ struct GeneralSettingsView: View {
                         }
                     }
                 ))
-                Text("Floating cards at desktop level: ZCode quota windows and the DeepSeek balance. Configure the ZCode key in Settings > ZCode.")
+                Text("Floating cards at desktop level: ZCode, Kimi, Qoder and Codex quota windows plus the DeepSeek balance. Provider credentials are configured in Settings > Coding Plans. The macOS system widgets (WidgetKit) are managed by macOS: long-press the desktop or Notification Center to add them.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
-            }
-            Section("Windows") {
-                Toggle("Restore Window State", isOn: Binding(
-                    get: { state.environment.settings.restoreWindowState },
-                    set: { state.environment.settings.restoreWindowState = $0 }
-                ))
             }
         }
         .formStyle(.grouped)

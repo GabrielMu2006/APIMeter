@@ -9,7 +9,18 @@
 /* Begin PBXFileReference section */
 		A10000000000000000000001 /* API Meter.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "API Meter.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		B20000000000000000000001 /* APIMeterAppTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = APIMeterAppTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		C10000000000000000000001 /* QuotaWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = QuotaWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		C10000000000000000000003 /* Exceptions for "QuotaWidget" folder in "QuotaWidget" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = C10000000000000000000007 /* QuotaWidget */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		A10000000000000000000002 /* APIMeter */ = {
@@ -30,10 +41,29 @@
 			path = Tests/APIMeterAppTests;
 			sourceTree = "<group>";
 		};
+		C10000000000000000000002 /* QuotaWidget */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				C10000000000000000000003 /* Exceptions for "QuotaWidget" folder in "QuotaWidget" target */,
+			);
+			explicitFileTypes = {
+			};
+			explicitFolders = (
+			);
+			path = QuotaWidget;
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		A10000000000000000000003 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C10000000000000000000005 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -47,6 +77,7 @@
 			isa = PBXGroup;
 			children = (
 				A10000000000000000000002 /* APIMeter */,
+				C10000000000000000000002 /* QuotaWidget */,
 				A10000000000000000000005 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -56,11 +87,26 @@
 			children = (
 				A10000000000000000000001 /* API Meter.app */,
 				B20000000000000000000001 /* APIMeterAppTests.xctest */,
+				C10000000000000000000001 /* QuotaWidget.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		C1000000000000000000000D /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				C1000000000000000000000E /* QuotaWidget.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXNativeTarget section */
 		A10000000000000000000006 /* APIMeter */ = {
@@ -70,10 +116,12 @@
 				A10000000000000000000008 /* Sources */,
 				A10000000000000000000003 /* Frameworks */,
 				A10000000000000000000009 /* Resources */,
+				C1000000000000000000000D /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				C1000000000000000000000C /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				A10000000000000000000002 /* APIMeter */,
@@ -108,7 +156,33 @@
 			productReference = B20000000000000000000001 /* APIMeterAppTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
+		C10000000000000000000007 /* QuotaWidget */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = C10000000000000000000008 /* Build configuration list for PBXNativeTarget "QuotaWidget" */;
+			buildPhases = (
+				C10000000000000000000004 /* Sources */,
+				C10000000000000000000005 /* Frameworks */,
+				C10000000000000000000006 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				C10000000000000000000002 /* QuotaWidget */,
+			);
+			name = QuotaWidget;
+			packageProductDependencies = (
+			);
+			productName = QuotaWidget;
+			productReference = C10000000000000000000001 /* QuotaWidget.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 /* End PBXNativeTarget section */
+
+/* Begin PBXBuildFile section */
+		C1000000000000000000000E /* QuotaWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = C10000000000000000000001 /* QuotaWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+/* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
 		B20000000000000000000003 /* PBXContainerItemProxy */ = {
@@ -118,6 +192,13 @@
 			remoteGlobalIDString = A10000000000000000000006;
 			remoteInfo = APIMeter;
 		};
+		C1000000000000000000000B /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = A10000000000000000000014 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = C10000000000000000000007;
+			remoteInfo = QuotaWidget;
+		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXTargetDependency section */
@@ -125,6 +206,11 @@
 			isa = PBXTargetDependency;
 			target = A10000000000000000000006 /* APIMeter */;
 			targetProxy = B20000000000000000000003 /* PBXContainerItemProxy */;
+		};
+		C1000000000000000000000C /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = C10000000000000000000007 /* QuotaWidget */;
+			targetProxy = C1000000000000000000000B /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -142,6 +228,9 @@
 					B20000000000000000000005 = {
 						CreatedOnToolsVersion = 16.0;
 						TestTargetID = A10000000000000000000006;
+					};
+					C10000000000000000000007 = {
+						CreatedOnToolsVersion = 16.0;
 					};
 				};
 			};
@@ -165,12 +254,20 @@
 			targets = (
 				A10000000000000000000006 /* APIMeter */,
 				B20000000000000000000005 /* APIMeterAppTests */,
+				C10000000000000000000007 /* QuotaWidget */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
 		A10000000000000000000009 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C10000000000000000000006 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -188,6 +285,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		B20000000000000000000009 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C10000000000000000000004 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -345,7 +449,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
-				MARKETING_VERSION = 1.5.0;
+				MARKETING_VERSION = 1.5.1;
 				PRODUCT_BUNDLE_IDENTIFIER = com.apimeter.mac;
 				PRODUCT_NAME = "API Meter";
 				PRODUCT_MODULE_NAME = APIMeter;
@@ -373,7 +477,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
-				MARKETING_VERSION = 1.5.0;
+				MARKETING_VERSION = 1.5.1;
 				PRODUCT_BUNDLE_IDENTIFIER = com.apimeter.mac;
 				PRODUCT_NAME = "API Meter";
 				PRODUCT_MODULE_NAME = APIMeter;
@@ -397,7 +501,7 @@
 					"@loader_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
-				MARKETING_VERSION = 1.5.0;
+				MARKETING_VERSION = 1.5.1;
 				PRODUCT_BUNDLE_IDENTIFIER = com.apimeter.mac.tests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 6.0;
@@ -419,11 +523,65 @@
 					"@loader_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
-				MARKETING_VERSION = 1.5.0;
+				MARKETING_VERSION = 1.5.1;
 				PRODUCT_BUNDLE_IDENTIFIER = com.apimeter.mac.tests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 6.0;
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/API Meter.app/Contents/MacOS/API Meter";
+			};
+			name = Release;
+		};
+		C10000000000000000000009 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_HARDENED_RUNTIME = NO;
+				GENERATE_INFOPLIST_FILE = YES;
+				CODE_SIGN_ENTITLEMENTS = QuotaWidget/QuotaWidget.entitlements;
+				INFOPLIST_FILE = QuotaWidget/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@executable_path/../../../../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				MARKETING_VERSION = 1.5.1;
+				PRODUCT_BUNDLE_IDENTIFIER = com.apimeter.mac.quota-widget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_VERSION = 6.0;
+			};
+			name = Debug;
+		};
+		C1000000000000000000000A /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_HARDENED_RUNTIME = NO;
+				GENERATE_INFOPLIST_FILE = YES;
+				CODE_SIGN_ENTITLEMENTS = QuotaWidget/QuotaWidget.entitlements;
+				INFOPLIST_FILE = QuotaWidget/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@executable_path/../../../../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				MARKETING_VERSION = 1.5.1;
+				PRODUCT_BUNDLE_IDENTIFIER = com.apimeter.mac.quota-widget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_VERSION = 6.0;
 			};
 			name = Release;
 		};
@@ -453,6 +611,15 @@
 			buildConfigurations = (
 				B20000000000000000000007 /* Debug */,
 				B20000000000000000000008 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		C10000000000000000000008 /* Build configuration list for PBXNativeTarget "QuotaWidget" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C10000000000000000000009 /* Debug */,
+				C1000000000000000000000A /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

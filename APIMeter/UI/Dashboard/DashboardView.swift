@@ -5,7 +5,6 @@ import SwiftUI
 /// breakdown sharing the remaining space.
 struct DashboardView: View {
     @Bindable var state: AppState
-    @Environment(\.openSettings) private var openSettings
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -163,7 +162,7 @@ struct DashboardView: View {
             }
             .help("Pin keeps the window floating above others")
             Button {
-                openSettings()
+                state.openSettingsWindow()
             } label: {
                 Image(systemName: "gearshape")
             }

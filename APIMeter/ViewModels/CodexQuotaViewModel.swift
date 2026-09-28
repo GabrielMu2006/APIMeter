@@ -90,6 +90,7 @@ public final class CodexQuotaViewModel {
             self.lastError = nil
             self.lastSuccessAt = Date()
             try? environment.repository.saveQuotaSnapshot(quota, provider: UsageRepository.QuotaProviderKey.codex)
+            WidgetStateStore.postDataChange()
             var fiveHourText = "n/a"
             if let percent = quota.fiveHour?.usedPercent {
                 fiveHourText = String(describing: percent) + "%"
@@ -104,6 +105,7 @@ public final class CodexQuotaViewModel {
                 self.usingSessionFallback = true
                 self.lastError = nil
                 try? environment.repository.saveQuotaSnapshot(fallback, provider: UsageRepository.QuotaProviderKey.codex)
+                WidgetStateStore.postDataChange()
                 Log.info("Codex quota from session log (offline fallback, fetched " + fallback.fetchedAt.formatted(date: .omitted, time: .shortened) + ")")
             } else {
                 lastError = error.localizedDescription

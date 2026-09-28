@@ -4,7 +4,6 @@ import SwiftUI
 /// plan rings (ZCode + Kimi), then dashboard entry - nothing more.
 struct MenuBarView: View {
     @Bindable var state: AppState
-    @Environment(\.openSettings) private var openSettings
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -35,7 +34,7 @@ struct MenuBarView: View {
                 }
                 Spacer()
                 Button {
-                    openSettings()
+                    state.openSettingsWindow()
                 } label: {
                     Image(systemName: "gear")
                 }

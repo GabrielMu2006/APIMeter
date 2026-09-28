@@ -29,6 +29,7 @@ API Meter 是一个本地优先的 macOS 应用，把 DeepSeek 官方数据（�
 
 - **菜单栏快捷面板**：DeepSeek 余额 + 今日一行速览，Coding Plans 圆环（ZCode / Kimi / Qoder）与重置时间，一键打开 Dashboard
 - **悬浮 Dashboard**：DeepSeek / ZCode / Kimi / Qoder 四家等分速览卡、期间统计移至筛选行、柱状图（悬停显示当天按 Key 明细）、每日历史（点击看当天详情）、API Key 多选筛选
+- **macOS 系统组件（WidgetKit）**：可选的原生组件，可放桌面/通知中心：Coding Plan 圆环（中号）与 DeepSeek 余额（小号），随应用刷新更新
 - **桌面小组件**：桌面层级小组件，每家一行（ZCode 5 小时+周窗口、Kimi 5 小时+周窗口、Qoder 月度 credits+组织池、DeepSeek 余额+今日）；拖拽移动、单击打开 Dashboard、右键菜单（快捷键默认 ⌥W）
 - **ZCode（GLM Coding Plan）额度**：5 小时与周窗口的剩余百分比及重置时间，使用与官方 glm-plan-usage 插件相同的配额查询接口；Key 存于独立钥匙串服务，自动刷新限流为每 5 分钟一次
 - **Kimi（Kimi Code）额度**：周与 5 小时窗口，凭据自动检测自 Kimi CLI（~/.kimi-code）；token 过期自动用 refresh token 静默续期（轮换写回 + 血统校验），无需手动跑 CLI
@@ -132,6 +133,14 @@ Key 只保存在 macOS 钥匙串（条目 `com.apimeter.deepseek-api-keys`）。
 
 - 在 设置 → 通用（或 设置 → Coding Plans → 桌面小组件）开启。每家一行：ZCode 5 小时+周窗口、Kimi 5 小时+周窗口、Qoder 月度+组织池、DeepSeek 余额+今日。
 - 拖拽移动（位置自动记忆）、单击卡片打开 Dashboard、右键菜单：打开主面板 / 鼠标穿透（纯展示）/ 刷新 / 隐藏。
+
+### macOS 系统组件（WidgetKit，可选）
+
+- 应用同时内置两个原生 macOS 组件，可摆到桌面或通知中心（长按桌面 / 打开通知中心 → 编辑组件 → 搜索 "API Meter"）：
+  - **Coding Plan 额度**（中号 / 大号）：ZCode / Kimi / Qoder / Codex 四家圆环，剩余百分比 + 5 小时重置实时倒计时；大号额外包含 DeepSeek 余额+今日消费头部、每个窗口的剩余量与重置时间——一个组件装下整个面板。
+  - **DeepSeek 余额**（小号）：当前余额与今日消费。
+- 数据由主应用推送：每次刷新成功即写入快照并重载时间线，组件新鲜度与应用一致（扩展进程在沙盒内，只读该快照文件，不碰 Key 也不发网络请求）。
+- 与上面的自绘桌面小组件面板互不冲突，按喜好选用。单击系统组件即可打开 API Meter。
 
 ## 日常使用
 

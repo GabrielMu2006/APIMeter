@@ -305,18 +305,7 @@ struct ZCodeSettingsView: View {
             }
 
             Section("Desktop Widgets") {
-                Toggle("Show on Desktop", isOn: Binding(
-                    get: { state.environment.settings.showDesktopWidgets },
-                    set: { enabled in
-                        state.environment.settings.showDesktopWidgets = enabled
-                        if enabled {
-                            state.widgetPanelController?.show()
-                        } else {
-                            state.widgetPanelController?.hide()
-                        }
-                    }
-                ))
-                Text("Floating widget cards at desktop level: ZCode 5-hour and weekly quota plus the DeepSeek balance. Drag to move; right-click for actions.")
+                Text("Managed in Settings > General: the floating desktop widget panel and the macOS system widgets.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

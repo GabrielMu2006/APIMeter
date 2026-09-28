@@ -61,6 +61,7 @@ public final class QoderQuotaViewModel {
             self.lastError = nil
             self.lastSuccessAt = Date()
             try? environment.repository.saveQuotaSnapshot(quota, provider: UsageRepository.QuotaProviderKey.qoder)
+            WidgetStateStore.postDataChange()
             var personalText = "n/a"
             if let percent = quota.monthly?.usedPercent {
                 personalText = String(describing: percent) + "%"

@@ -83,6 +83,7 @@ public final class KimiQuotaViewModel {
             self.lastError = nil
             self.lastSuccessAt = Date()
             try? environment.repository.saveQuotaSnapshot(quota, provider: UsageRepository.QuotaProviderKey.kimi)
+            WidgetStateStore.postDataChange()
             var weeklyText = "n/a"
             if let percent = quota.weekly?.usedPercent {
                 weeklyText = String(describing: percent) + "%"

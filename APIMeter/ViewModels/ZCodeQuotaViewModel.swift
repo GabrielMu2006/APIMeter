@@ -56,6 +56,7 @@ public final class ZCodeQuotaViewModel {
             self.lastError = nil
             self.lastSuccessAt = Date()
             try? environment.repository.saveQuotaSnapshot(quota, provider: region.rawValue)
+            WidgetStateStore.postDataChange()
             var fiveHourText = "n/a"
             if let percent = quota.fiveHour?.usedPercent {
                 fiveHourText = String(describing: percent) + "%"
