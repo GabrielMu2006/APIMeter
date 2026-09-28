@@ -19,6 +19,8 @@ apimeter_dev_key*
 # Local artifacts
 docs/samples/
 dist/
+*.dmg
+default.profraw
 
 # ZCode local workspace state
 .zcode/
