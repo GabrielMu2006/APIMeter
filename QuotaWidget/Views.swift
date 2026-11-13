@@ -313,8 +313,13 @@ struct CodingPlansView: View {
 
     private var mediumLayout: some View {
         let providers = entry.snapshot.providers.filter(\.available)
-        let rows = [Array(providers.prefix(2)), Array(providers.dropFirst(2).prefix(2))]
-        return VStack(alignment: .leading, spacing: 8) {
+        // Chunk dynamically: five providers fill three rows (2/2/1), which
+        // still fits the medium height with the tighter row spacing.
+        var rows: [[WidgetSnapshot.ProviderInfo]] = []
+        for index in stride(from: 0, to: providers.count, by: 2) {
+            rows.append(Array(providers[index..<Swift.min(index + 2, providers.count)]))
+        }
+        return VStack(alignment: .leading, spacing: 5) {
             if providers.isEmpty {
                 Text("未检测到 Coding Plan 凭据\n请打开 API Meter 配置")
                     .font(.system(size: 11))
