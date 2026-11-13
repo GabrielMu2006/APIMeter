@@ -140,6 +140,10 @@ struct ZCodeQuotaSection: View {
         state.codexQuotaViewModel.hasCredential || state.codexQuotaViewModel.quota != nil
     }
 
+    private var showCursor: Bool {
+        state.cursorQuotaViewModel.hasCredential || state.cursorQuotaViewModel.quota != nil
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
@@ -149,7 +153,7 @@ struct ZCodeQuotaSection: View {
                     Text("ZCode " + level.capitalized).font(.caption2).foregroundStyle(.tertiary)
                 }
             }
-            if state.zcodeQuotaViewModel.quota != nil || showKimi || showQoder || showCodex {
+            if state.zcodeQuotaViewModel.quota != nil || showKimi || showQoder || showCodex || showCursor {
                 // Grid keeps the two ring columns aligned across rows even
                 // when the label widths differ.
                 Grid(alignment: .leading, horizontalSpacing: 14, verticalSpacing: 8) {
@@ -211,6 +215,17 @@ struct ZCodeQuotaSection: View {
                             )
                         }
                     }
+                    if showCursor {
+                        // Cursor bills per cycle (no 5h/weekly split) - a
+                        // single-column row keeps the grid aligned.
+                        GridRow {
+                            QuotaRingBlock(
+                                window: state.cursorQuotaViewModel.quota?.monthly,
+                                title: "Cursor 周期",
+                                subtitle: cursorCycleSubtitle
+                            )
+                        }
+                    }
                 }
             } else if state.zcodeQuotaViewModel.hasStoredKey {
                 Text("Loading...")
@@ -243,6 +258,19 @@ struct ZCodeQuotaSection: View {
     /// Compact weekly reset stamp, e.g. "周四 06:56" / "Thu 06:56".
     static func resetStamp(_ date: Date) -> String {
         date.formatted(.dateTime.weekday(.abbreviated).hour().minute())
+    }
+
+    private var cursorCycleSubtitle: String? {
+        let cursor = state.cursorQuotaViewModel
+        if let resetsAt = cursor.quota?.monthly?.resetsAt {
+            return "重置 " + Self.resetStamp(resetsAt)
+        }
+        switch cursor.credentialState {
+        case .expired:
+            return "凭据失效 · 打开 Cursor 重新登录"
+        default:
+            return "打开 Cursor 以激活"
+        }
     }
 
     private var kimiWeeklySubtitle: String? {

@@ -16,7 +16,7 @@ API Meter 是一个本地优先的 macOS 应用，把 DeepSeek 官方数据（�
 - [系统要求](#系统要求)
 - [安装](#安装)
 - [首次配置](#首次配置)
-- [Coding Plan 额度（ZCode / Kimi / Qoder / Codex）](#coding-plan-额度zcode--kimi--qoder--codex)
+- [Coding Plan 额度（ZCode / Kimi / Qoder / Codex / Cursor）](#coding-plan-额度zcode--kimi--qoder--codex--cursor)
 - [日常使用](#日常使用)
 - [数字是怎么算出来的](#数字是怎么算出来的)
 - [DeepSeekSync（可选自动导出）](#deepseeksync可选自动导出)
@@ -35,6 +35,7 @@ API Meter 是一个本地优先的 macOS 应用，把 DeepSeek 官方数据（�
 - **Kimi（Kimi Code）额度**：周与 5 小时窗口，凭据自动检测自 Kimi CLI（~/.kimi-code）；token 过期自动用 refresh token 静默续期（轮换写回 + 血统校验），无需手动跑 CLI
 - **Qoder（国内版）额度**：月度 credits 池（及团队组织资源包，若已分配），自动检测自 Qoder 桌面版加密凭据文件（钥匙串 SafeStorage → AES 解密，只读）；token 有效期约一个月
 - **Codex（ChatGPT 套餐）额度**：5 小时与周速率窗口，自动检测自 Codex CLI 凭据（~/.codex/auth.json）；约 10 天寿命的 token 自动续期（轮换写回 + 血统校验）。可选代理设置（默认关闭），应对 chatgpt.com 无法直连的网络；端点不可达时回退读取 CLI 会话日志中的速率限制
+- **Cursor 额度**：计费周期的已用百分比与重置日期，自动检测自 Cursor 桌面版本地状态库；只读，约两个月的 token 由 Cursor 自行轮换
 - **按 Key 成本**：由官方导出的 `price x amount` 推导，并与账单总额交叉核对；导入采用替换语义，重复导入绝不会重复计费
 - **余额推算今日花费**：今日成本由余额快照推算（昨日基线 − 今日余额，自动识别并忽略充值）；已完成的天以官方导出为准
 - **每日自动同步**：可选 DeepSeekSync 模块每天 00:30 自动下载官方导出（错过则启动/唤醒时补跑）并自动导入
@@ -103,7 +104,7 @@ Key 只保存在 macOS 钥匙串（条目 `com.apimeter.deepseek-api-keys`）。
 - **Global Shortcut**：默认 ⌥Space，可重新录制
 - **Appearance**：System / Light / Dark
 
-## Coding Plan 额度（ZCode / Kimi / Qoder / Codex）
+## Coding Plan 额度（ZCode / Kimi / Qoder / Codex / Cursor）
 
 各家额度都会出现在菜单栏面板、Dashboard 和桌面小组件里。快照本地保留 30 天；自动刷新限流为每家每 5 分钟一次。
 
@@ -122,6 +123,11 @@ Key 只保存在 macOS 钥匙串（条目 `com.apimeter.deepseek-api-keys`）。
 
 - 安装并登录 Qoder CN 桌面版。API Meter 只读解密其凭据文件；macOS 会请求一次钥匙串访问权限 - 选择**始终允许**。
 - token 有效期约一个月（设置页显示到期时间）。个人月度 credits 池立即显示；团队组织资源包一旦分配会自动出现。
+
+### Cursor - 全自动
+
+- 安装并登录 Cursor 桌面版即可。API Meter 只读读取其本地状态库中的 access token（`~/Library/Application Support/Cursor/User/globalStorage/state.vscdb`）。
+- 用量接口是 dashboard 自己的 RPC（api2.cursor.sh，非官方文档化 API）。token 约两个月寿命，每次打开 Cursor 会自动轮换 - 无需任何手动操作。周期已用百分比与重置日期会出现在其他套餐出现的所有位置。
 
 ### Codex（ChatGPT 套餐）- 全自动
 

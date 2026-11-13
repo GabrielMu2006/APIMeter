@@ -28,6 +28,9 @@ public final class AppEnvironment {
     /// Offline fallback: parses the rate_limits the CLI writes into its
     /// session log after every model call.
     public let codexSessionUsageReader: CodexSessionUsageReader
+    /// Cursor credential reader (the GUI app's local state DB, read-only).
+    public let cursorCredentialStore: CursorCredentialStore
+    public let cursorQuotaProvider: (CursorCredential) -> any CursorQuotaProviding
 
     public init(
         database: DatabaseManager,
@@ -41,7 +44,9 @@ public final class AppEnvironment {
         qoderQuotaProvider: ((QoderCredential) -> any QoderQuotaProviding)? = nil,
         codexCredentialStore: CodexCredentialStore? = nil,
         codexQuotaProvider: ((CodexCredential, CodexProxyConfig?) -> any CodexQuotaProviding)? = nil,
-        codexSessionUsageReader: CodexSessionUsageReader? = nil
+        codexSessionUsageReader: CodexSessionUsageReader? = nil,
+        cursorCredentialStore: CursorCredentialStore? = nil,
+        cursorQuotaProvider: ((CursorCredential) -> any CursorQuotaProviding)? = nil
     ) {
         self.database = database
         self.repository = UsageRepository(database: database)
@@ -85,6 +90,14 @@ public final class AppEnvironment {
             }
         }
         self.codexSessionUsageReader = codexSessionUsageReader ?? CodexSessionUsageReader()
+        self.cursorCredentialStore = cursorCredentialStore ?? CursorCredentialStore()
+        if let cursorQuotaProvider {
+            self.cursorQuotaProvider = cursorQuotaProvider
+        } else {
+            self.cursorQuotaProvider = { credential in
+                CursorQuotaClient(credential: credential)
+            }
+        }
     }
 
     /// The real environment backed by the on-disk database.
@@ -104,7 +117,9 @@ public final class AppEnvironment {
         qoderQuotaProvider: ((QoderCredential) -> any QoderQuotaProviding)? = nil,
         codexCredentialStore: CodexCredentialStore? = nil,
         codexQuotaProvider: ((CodexCredential, CodexProxyConfig?) -> any CodexQuotaProviding)? = nil,
-        codexSessionUsageReader: CodexSessionUsageReader? = nil
+        codexSessionUsageReader: CodexSessionUsageReader? = nil,
+        cursorCredentialStore: CursorCredentialStore? = nil,
+        cursorQuotaProvider: ((CursorCredential) -> any CursorQuotaProviding)? = nil
     ) throws -> AppEnvironment {
         AppEnvironment(
             database: try DatabaseManager.ephemeral(),
@@ -116,7 +131,9 @@ public final class AppEnvironment {
             qoderQuotaProvider: qoderQuotaProvider,
             codexCredentialStore: codexCredentialStore ?? CodexCredentialStore(homeDirectory: URL(fileURLWithPath: "/nonexistent-codex-home")),
             codexQuotaProvider: codexQuotaProvider,
-            codexSessionUsageReader: codexSessionUsageReader ?? CodexSessionUsageReader(sessionsDirectory: URL(fileURLWithPath: "/nonexistent-codex-sessions"))
+            codexSessionUsageReader: codexSessionUsageReader ?? CodexSessionUsageReader(sessionsDirectory: URL(fileURLWithPath: "/nonexistent-codex-sessions")),
+            cursorCredentialStore: cursorCredentialStore ?? CursorCredentialStore(databaseURL: URL(fileURLWithPath: "/nonexistent-cursor/state.vscdb")),
+            cursorQuotaProvider: cursorQuotaProvider
         )
     }
 

@@ -16,7 +16,7 @@ All data stays on your Mac. No scraping, no cookies, no MITM.
 - [Requirements](#requirements)
 - [Installation](#installation)
 - [First-run configuration](#first-run-configuration)
-- [Coding Plan quotas (ZCode / Kimi / Qoder / Codex)](#coding-plan-quotas-zcode--kimi--qoder--codex)
+- [Coding Plan quotas (ZCode / Kimi / Qoder / Codex / Cursor)](#coding-plan-quotas-zcode--kimi--qoder--codex--cursor)
 - [Daily usage guide](#daily-usage-guide)
 - [How the numbers work](#how-the-numbers-work)
 - [DeepSeekSync (optional auto-export)](#deepseeksync-optional-auto-export)
@@ -35,6 +35,7 @@ All data stays on your Mac. No scraping, no cookies, no MITM.
 - **Kimi (Kimi Code) quota** - weekly and 5-hour windows auto-detected from the Kimi CLI credential (~/.kimi-code); expired tokens refresh themselves with the stored refresh token (rotated tokens written back, lineage-checked), so no manual CLI runs
 - **Qoder (CN) quota** - monthly credit pool (and the team org resource package when provisioned), auto-detected from the Qoder desktop app's encrypted auth file (Keychain SafeStorage -> AES decrypt, read-only); the token lives about a month
 - **Codex (ChatGPT plan) quota** - 5-hour and weekly rate-limit windows auto-detected from the Codex CLI credential (~/.codex/auth.json); the ~10-day token auto-refreshes (rotating, lineage-checked write-back). Optional proxy setting (off by default) for networks where chatgpt.com is unreachable; when the endpoint can't be reached, API Meter falls back to the rate limits the CLI writes into its session log
+- **Cursor quota** - billing-cycle included usage (used % + reset date) auto-detected from the Cursor app's local state database; read-only, the ~2-month WorkOS token rotates by itself whenever you open Cursor
 - **Per-key cost breakdown** - derived from the official export's `price x amount` rows and cross-checked against billing totals (imports use replace semantics, so re-imports never double-count)
 - **Balance-derived Today** - today's cost comes from balance snapshots (yesterday's baseline minus today, top-ups detected and ignored); official exports stay authoritative for completed days
 - **Daily export auto-sync** - optional DeepSeekSync module downloads the official usage export once per day at 00:30 (catch-up on launch/wake) and imports it automatically
@@ -109,7 +110,7 @@ If the system prompt was dismissed: System Settings -> Notifications -> API Mete
 - **Global Shortcut**: default Option+Space; record your own combination.
 - **Appearance**: System / Light / Dark.
 
-## Coding Plan quotas (ZCode / Kimi / Qoder / Codex)
+## Coding Plan quotas (ZCode / Kimi / Qoder / Codex / Cursor)
 
 All providers feed the menu bar panel, the dashboard and the desktop
 widgets. Snapshots are kept locally for 30 days; automatic refresh is
@@ -157,6 +158,16 @@ throttled to one request per 5 minutes per provider.
 - When the endpoint is unreachable anyway, API Meter falls back to the
   rate limits the Codex CLI records in its session log, so the card still
   shows your last known windows (as of your latest Codex use).
+
+### Cursor - automatic
+
+- Install and log in to the Cursor desktop app once. API Meter reads the
+  access token from its local state database read-only
+  (`~/Library/Application Support/Cursor/User/globalStorage/state.vscdb`).
+- The usage endpoint is the dashboard's own RPC on api2.cursor.sh (not an
+  officially documented API). The token lives about two months and Cursor
+  rotates it on every launch - no manual steps. Your billing-cycle used %
+  and the cycle reset date show up everywhere the other plans do.
 
 ### Desktop widgets (default shortcut Option+W)
 

@@ -90,6 +90,19 @@ struct DashboardView: View {
                     )
                 }
                 .opacity((state.codexQuotaViewModel.hasCredential || state.codexQuotaViewModel.quota != nil) ? 1 : 0.35)
+                VStack(spacing: 10) {
+                    ZCodeQuotaCard(
+                        title: "Cursor · 周期",
+                        window: state.cursorQuotaViewModel.quota?.monthly,
+                        subtitle: cursorCycleSubtitle
+                    )
+                    ZCodeQuotaCard(
+                        title: "Cursor · 重置",
+                        window: nil,
+                        subtitle: cursorResetSubtitle
+                    )
+                }
+                .opacity((state.cursorQuotaViewModel.hasCredential || state.cursorQuotaViewModel.quota != nil) ? 1 : 0.35)
             }
 
             HStack {
@@ -131,7 +144,7 @@ struct DashboardView: View {
             .frame(maxHeight: .infinity)
         }
         .padding(16)
-        .frame(minWidth: 940, minHeight: 680)
+        .frame(minWidth: 1080, minHeight: 680)
         .apiMeterAppearance(state.environment.settings.appearance)
         .task {
             await state.refreshAll()
@@ -272,6 +285,20 @@ struct DashboardView: View {
     private var codexFiveHourSubtitle: String {
         state.codexQuotaViewModel.resetsIn(state.codexQuotaViewModel.quota?.fiveHour)
             .map { "◔ " + $0 + " 后重置" } ?? ""
+    }
+
+    private var cursorCycleSubtitle: String {
+        if let used = state.cursorQuotaViewModel.quota?.monthly?.usedPercent {
+            return "已用 " + String(format: "%.1f%%", NSDecimalNumber(decimal: used).doubleValue)
+        }
+        return "打开 Cursor 以激活"
+    }
+
+    private var cursorResetSubtitle: String {
+        if let resetsAt = state.cursorQuotaViewModel.quota?.monthly?.resetsAt {
+            return "重置 " + resetsAt.formatted(.dateTime.month(.abbreviated).day().hour().minute())
+        }
+        return "—"
     }
 
     private var codexWeeklySubtitle: String {

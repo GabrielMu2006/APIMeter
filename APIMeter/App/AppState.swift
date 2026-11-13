@@ -12,6 +12,7 @@ public final class AppState {
     public var kimiQuotaViewModel: KimiQuotaViewModel
     public var qoderQuotaViewModel: QoderQuotaViewModel
     public var codexQuotaViewModel: CodexQuotaViewModel
+    public var cursorQuotaViewModel: CursorQuotaViewModel
     public var dashboardViewModel: DashboardViewModel
     public var settingsViewModel: SettingsViewModel
     public var selectedDay: LocalDay?
@@ -43,6 +44,7 @@ public final class AppState {
         self.kimiQuotaViewModel = KimiQuotaViewModel(environment: environment)
         self.qoderQuotaViewModel = QoderQuotaViewModel(environment: environment)
         self.codexQuotaViewModel = CodexQuotaViewModel(environment: environment)
+        self.cursorQuotaViewModel = CursorQuotaViewModel(environment: environment)
         self.dashboardViewModel = DashboardViewModel(environment: environment)
         self.settingsViewModel = SettingsViewModel(environment: environment)
         self.widgetStateObserver = widgetStateStore.observeAndPublish { [weak self] in
@@ -65,6 +67,7 @@ public final class AppState {
                 widgetProvider("kimi", "Kimi", kimiQuotaViewModel.quota, offline: false),
                 widgetProvider("qoder", "Qoder", qoderQuotaViewModel.quota, offline: false),
                 widgetProvider("codex", "Codex", codexQuotaViewModel.quota, offline: codexQuotaViewModel.usingSessionFallback),
+                widgetProvider("cursor", "Cursor", cursorQuotaViewModel.quota, offline: false),
             ]
         )
     }
@@ -185,6 +188,7 @@ public final class AppState {
         await kimiQuotaViewModel.refresh()
         await qoderQuotaViewModel.refresh()
         await codexQuotaViewModel.refresh()
+        await cursorQuotaViewModel.refresh()
         await dashboardViewModel.reload()
     }
 }

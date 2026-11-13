@@ -304,6 +304,56 @@ struct ZCodeSettingsView: View {
                 }
             }
 
+            Section("Cursor (auto-detected)") {
+                switch state.cursorQuotaViewModel.credentialState {
+                case .available(let credential):
+                    LabeledContent("Credential") {
+                        Text("Cursor GUI token detected")
+                            .foregroundStyle(.secondary)
+                    }
+                    LabeledContent("Token expiry") {
+                        Text(credential.expiresAt.map { "有效期至 " + $0.formatted(date: .abbreviated, time: .omitted) + "（打开 Cursor 会自动轮换）" } ?? "—")
+                            .foregroundStyle(.secondary)
+                    }
+                case .expired:
+                    LabeledContent("Credential") {
+                        Text("凭据已失效 - 打开 Cursor 重新登录")
+                            .foregroundStyle(.orange)
+                    }
+                case .missing:
+                    LabeledContent("Credential") {
+                        Text("未找到 - 安装并登录 Cursor 桌面版")
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                HStack {
+                    Button("Test Connection") {
+                        Task { await state.cursorQuotaViewModel.refresh(force: true) }
+                    }
+                    if let quota = state.cursorQuotaViewModel.quota {
+                        Text("Last fetch " + quota.fetchedAt.formatted(date: .omitted, time: .shortened))
+                            .font(.caption)
+                            .foregroundStyle(.tertiary)
+                    }
+                }
+                if let quota = state.cursorQuotaViewModel.quota, let cycle = quota.monthly {
+                    LabeledContent("本周期已用") {
+                        Text(cycle.usedPercent.map { String(format: "%.1f%%", NSDecimalNumber(decimal: $0).doubleValue) } ?? "—")
+                            .monospacedDigit()
+                    }
+                    LabeledContent("周期重置") {
+                        Text(cycle.resetsAt.map { $0.formatted(date: .abbreviated, time: .omitted) } ?? "—")
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                if let error = state.cursorQuotaViewModel.lastError {
+                    Text(error)
+                        .font(.caption)
+                        .foregroundStyle(.orange)
+                        .textSelection(.enabled)
+                }
+            }
+
             Section("Desktop Widgets") {
                 Text("Managed in Settings > General: the floating desktop widget panel and the macOS system widgets.")
                     .font(.caption)

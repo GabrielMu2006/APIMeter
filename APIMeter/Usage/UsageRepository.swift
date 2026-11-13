@@ -539,6 +539,7 @@ public struct UsageRepository: Sendable {
         public static let kimi = "kimi"
         public static let qoder = "qoder"
         public static let codex = "codex"
+    public static let cursor = "cursor"
     }
 
     /// Stores every window of a quota snapshot in one write, pruning rows

@@ -243,7 +243,10 @@ private struct LargeProviderBlock: View {
 private extension CodingPlansView {
     var largeLayout: some View {
         let providers = entry.snapshot.providers
-        let rows = [Array(providers.prefix(2)), Array(providers.dropFirst(2).prefix(2))]
+        var rows: [[WidgetSnapshot.ProviderInfo]] = []
+        for index in stride(from: 0, to: providers.count, by: 2) {
+            rows.append(Array(providers[index..<Swift.min(index + 2, providers.count)]))
+        }
         return VStack(alignment: .leading, spacing: 7) {
             header
             ForEach(0..<rows.count, id: \.self) { index in

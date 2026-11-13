@@ -116,6 +116,13 @@ enum WidgetSnapshotLoader {
                         WidgetSnapshot.WindowInfo(kind: "weekly", remainingPercent: 60, resetsAt: nil),
                     ]
                 ),
+                WidgetSnapshot.ProviderInfo(
+                    id: "cursor", displayName: "Cursor", available: true, offline: false,
+                    planLevel: nil, fetchedAt: now,
+                    windows: [
+                        WidgetSnapshot.WindowInfo(kind: "monthly", remainingPercent: 99, resetsAt: inMinutes(6 * 24 * 60)),
+                    ]
+                ),
             ]
         )
     }

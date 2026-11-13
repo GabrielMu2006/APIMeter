@@ -115,6 +115,24 @@ struct DesktopWidgetsView: View {
                     .frame(width: cardWidth, height: cardHeight)
                 }
             }
+            if showCursorRow {
+                HStack(spacing: spacing) {
+                    QuotaWidgetCard(
+                        title: "Cursor · 周期",
+                        window: state.cursorQuotaViewModel.quota?.monthly,
+                        isFiveHourCard: false,
+                        resetsIn: state.cursorQuotaViewModel.resetsIn(state.cursorQuotaViewModel.quota?.monthly, now: now)
+                    )
+                    .frame(width: cardWidth, height: cardHeight)
+                    QuotaWidgetCard(
+                        title: "Cursor · 本周期已用",
+                        window: nil,
+                        isFiveHourCard: false,
+                        captionOverride: cursorCaption
+                    )
+                    .frame(width: cardWidth, height: cardHeight)
+                }
+            }
             BalanceWidgetCard(
                 balance: state.balanceViewModel.balance?.balanceInfos.first,
                 todayCost: state.dashboardViewModel.todayDisplayCost,
@@ -138,6 +156,31 @@ struct DesktopWidgetsView: View {
     /// Codex auto-detects from the CLI's auth.json.
     private var showCodexRow: Bool {
         state.codexQuotaViewModel.hasCredential || state.codexQuotaViewModel.quota != nil
+    }
+
+    /// Cursor auto-detects from the GUI app's local state database.
+    private var showCursorRow: Bool {
+        state.cursorQuotaViewModel.hasCredential || state.cursorQuotaViewModel.quota != nil
+    }
+
+    private var cursorCaption: String? {
+        let cursor = state.cursorQuotaViewModel
+        if cursor.quota == nil {
+            switch cursor.credentialState {
+            case .expired:
+                return "凭据失效 · 打开 Cursor 重新登录"
+            default:
+                return "打开 Cursor 以激活"
+            }
+        }
+        var parts: [String] = []
+        if let used = cursor.quota?.monthly?.usedPercent {
+            parts.append("已用 " + QuotaWidgetCard.percentText(used))
+        }
+        if let resetsAt = cursor.quota?.monthly?.resetsAt {
+            parts.append("重置 " + ZCodeQuotaSection.resetStamp(resetsAt))
+        }
+        return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
 
     private var codexWeeklyCaption: String? {
