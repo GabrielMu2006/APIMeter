@@ -99,7 +99,7 @@ public struct QoderCredentialStore: Sendable {
 /// - an interactive failure (password required, user cancelled) marks the
 ///   entry denied so this launch never touches the keychain for it again
 /// - plain "item not found" is cheap and prompt-free, retried as normal
-private final class SafeStorageSecretCache: @unchecked Sendable {
+final class SafeStorageSecretCache: @unchecked Sendable {
     static let shared = SafeStorageSecretCache()
 
     private let lock = NSLock()

@@ -164,6 +164,8 @@ throttled to one request per 5 minutes per provider.
 - Install and log in to the Cursor desktop app once. API Meter reads the
   access token from its local state database read-only
   (`~/Library/Application Support/Cursor/User/globalStorage/state.vscdb`).
+  Cursor 3.30+ encrypts that token with Chromium SafeStorage; the first
+  request may ask once for keychain access - choose **Always Allow**.
 - The usage endpoint is the dashboard's own RPC on api2.cursor.sh (not an
   officially documented API). The token lives about two months and Cursor
   rotates it on every launch - no manual steps. Your billing-cycle used %

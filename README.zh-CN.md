@@ -126,7 +126,7 @@ Key 只保存在 macOS 钥匙串（条目 `com.apimeter.deepseek-api-keys`）。
 
 ### Cursor - 全自动
 
-- 安装并登录 Cursor 桌面版即可。API Meter 只读读取其本地状态库中的 access token（`~/Library/Application Support/Cursor/User/globalStorage/state.vscdb`）。
+- 安装并登录 Cursor 桌面版即可。API Meter 只读读取其本地状态库中的 access token（`~/Library/Application Support/Cursor/User/globalStorage/state.vscdb`）。Cursor 3.30+ 会用 Chromium SafeStorage 加密该 token；首次请求可能请求一次钥匙串访问权限 - 选择**始终允许**。
 - 用量接口是 dashboard 自己的 RPC（api2.cursor.sh，非官方文档化 API）。token 约两个月寿命，每次打开 Cursor 会自动轮换 - 无需任何手动操作。周期已用百分比与重置日期会出现在其他套餐出现的所有位置。
 
 ### Codex（ChatGPT 套餐）- 全自动

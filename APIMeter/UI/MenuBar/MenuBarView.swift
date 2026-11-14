@@ -252,6 +252,14 @@ struct ZCodeQuotaSection: View {
                 .foregroundStyle(.orange)
                 .help(error)
             }
+            if let error = state.cursorQuotaViewModel.lastError {
+                HStack(spacing: 3) {
+                    Image(systemName: "exclamationmark.triangle.fill").font(.caption2)
+                    Text("Cursor: unable to refresh").font(.caption2)
+                }
+                .foregroundStyle(.orange)
+                .help(error)
+            }
         }
     }
 
