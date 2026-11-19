@@ -32,12 +32,17 @@ struct QoderQuotaResponse: Decodable {
     let orgResourcePackage: Pool?
 
     struct Pool: Decodable {
+        /// Personal quota carries "total"; org resource packages carry the
+        /// same allowance as "cap" instead (live-verified 2026-11).
         let total: FlexibleDecimal?
+        let cap: FlexibleDecimal?
         let used: FlexibleDecimal?
         let remaining: FlexibleDecimal?
         let unit: String?
         /// Org pools only; absent on the personal quota.
         let available: Bool?
+
+        var effectiveTotal: FlexibleDecimal? { total ?? cap }
     }
 }
 
@@ -72,7 +77,7 @@ enum QoderQuotaDecoder {
 
     private static func poolWindow(_ pool: QoderQuotaResponse.Pool?, kind: QuotaWindowKind, resetsAt: Date?) -> QuotaWindow? {
         guard let pool else { return nil }
-        let total = pool.total?.wrappedValue
+        let total = pool.effectiveTotal?.wrappedValue
         let used = pool.used?.wrappedValue
         let remaining = pool.remaining?.wrappedValue
         guard let total, total > 0 else {

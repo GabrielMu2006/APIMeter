@@ -79,4 +79,20 @@ struct QoderQuotaParsingTests {
         #expect(quota.monthly?.remaining == 500)
         #expect(quota.monthly?.usedPercent == 37.5)
     }
+
+    /// Live response captured 2026-11-19 (userId/upgradeUrl removed): the
+    /// team's personal credits are exhausted AND the org resource package
+    /// is provisioned - both pools must map.
+    @Test func liveTeamsResponseMapsBothPools() throws {
+        let quota = try fixture("""
+        {"userType": "teams", "usageType": "credits", "totalUsagePercentage": 1.0, "isQuotaExceeded": false, "expiresAt": 1796054400000, "outerProviders": [], "userQuota": {"total": 3000.0, "used": 3000.0, "remaining": 0.0, "percentage": 1.0, "unit": "credits"}, "orgResourcePackage": {"used": 336.0, "remaining": 1664.0, "percentage": 0.17, "unit": "credits", "cap": 2000.0, "available": true}, "isPlanQuotaProrated": false}
+        """)
+        let monthly = try #require(quota.monthly)
+        #expect(monthly.usedPercent == 100)
+        #expect(monthly.effectiveRemaining == 0)
+        let org = try #require(quota.orgMonthly)
+        #expect(org.totalValue == 2000)
+        #expect(org.usedValue == 336)
+        #expect(org.effectiveRemaining == 1664)
+    }
 }
